@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "WebFetch(domain:vitejs.dev)",
+      "Bash(npm install)"
+    ]
+  }
+}
