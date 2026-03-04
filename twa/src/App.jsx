@@ -9,24 +9,15 @@ function App() {
   const [completedToday, setCompletedToday] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  // Generate unique user ID (stays same per device/browser)
-  const getUserId = () => {
-    let userId = localStorage.getItem('user_id')
-    if (!userId) {
-      userId = 'user_' + Math.random().toString(36).substr(2, 9)
-      localStorage.setItem('user_id', userId)
-    }
-    return userId
-  }
-
-  const userId = getUserId()
+  // Use a fixed user ID so all devices share the same data
+  const userId = 'shared_user'
 
   // Debug logs
   useEffect(() => {
     console.log('App mounted')
-    console.log('User ID:', userId)
+    console.log('User ID (SHARED):', userId)
     console.log('Database:', database)
-  }, [userId])
+  }, [])
 
   // Initialize Firebase listeners on mount
   useEffect(() => {
@@ -98,7 +89,7 @@ function App() {
       unsubscribeTasks()
       unsubscribeCompleted()
     }
-  }, [userId])
+  }, [])
 
   // Real-time overnight check every 60s
   useEffect(() => {
