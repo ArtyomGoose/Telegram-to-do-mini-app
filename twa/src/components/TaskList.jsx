@@ -1,18 +1,28 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 function TaskList({ tasks, onAdd, onComplete }) {
   const [inputValue, setInputValue] = useState('')
+  const inputRef = useRef(null)
 
   const handleAddTask = () => {
     if (inputValue.trim()) {
       onAdd(inputValue.trim())
       setInputValue('')
+
+      // Close keyboard on mobile
+      if (inputRef.current) {
+        inputRef.current.blur()
+      }
     }
   }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleAddTask()
+      // Close keyboard after Enter
+      if (inputRef.current) {
+        inputRef.current.blur()
+      }
     }
   }
 
@@ -20,6 +30,7 @@ function TaskList({ tasks, onAdd, onComplete }) {
     <div className="task-list">
       <div className="task-input-wrapper">
         <input
+          ref={inputRef}
           type="text"
           className="task-input"
           placeholder="Добавить задачу..."
