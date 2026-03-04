@@ -109,9 +109,6 @@ body {
   background-color: var(--tg-theme-secondary-bg-color, #2b2b2b);
   padding: 12px;
   border-radius: 8px;
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
 }
 
 .task-input {
