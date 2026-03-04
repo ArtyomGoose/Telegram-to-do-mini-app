@@ -7,6 +7,13 @@ import App from './App.jsx'
 window.Telegram?.WebApp.ready()
 window.Telegram?.WebApp.expand()
 
+// Handle viewport changes when keyboard appears/disappears
+if (window.Telegram?.WebApp) {
+  window.Telegram.WebApp.onEvent('viewportChanged', () => {
+    window.Telegram.WebApp.expand()
+  })
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
