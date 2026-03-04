@@ -83,9 +83,11 @@ function App() {
     const completedRef = ref(database, `users/${userId}/completedToday`)
     const unsubscribeCompleted = onValue(completedRef, (snapshot) => {
       console.log('Completed snapshot:', snapshot.val())
-      if (snapshot.exists()) {
+      if (snapshot.exists() && snapshot.val() !== null) {
         setCompletedToday(snapshot.val())
       } else {
+        // Initialize to 0 if doesn't exist
+        set(completedRef, 0)
         setCompletedToday(0)
       }
     }, (error) => {
