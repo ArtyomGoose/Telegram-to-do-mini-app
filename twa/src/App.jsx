@@ -21,9 +21,17 @@ function App() {
 
   const userId = getUserId()
 
+  // Debug logs
+  useEffect(() => {
+    console.log('App mounted')
+    console.log('User ID:', userId)
+    console.log('Database:', database)
+  }, [userId])
+
   // Initialize Firebase listeners on mount
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10)
+    console.log('Setting up Firebase listeners for user:', userId)
 
     // Check if day changed
     const checkDayChange = () => {
@@ -53,7 +61,9 @@ function App() {
 
     // Subscribe to tasks
     const tasksRef = ref(database, `users/${userId}/tasks`)
+    console.log('Tasks ref path:', `users/${userId}/tasks`)
     const unsubscribeTasks = onValue(tasksRef, (snapshot) => {
+      console.log('Tasks snapshot received:', snapshot.exists(), snapshot.val())
       if (snapshot.exists()) {
         const tasksData = snapshot.val()
         const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
@@ -65,16 +75,21 @@ function App() {
         setTasks([])
       }
       setLoading(false)
+    }, (error) => {
+      console.error('Tasks listener error:', error)
     })
 
     // Subscribe to completed counter
     const completedRef = ref(database, `users/${userId}/completedToday`)
     const unsubscribeCompleted = onValue(completedRef, (snapshot) => {
+      console.log('Completed snapshot:', snapshot.val())
       if (snapshot.exists()) {
         setCompletedToday(snapshot.val())
       } else {
         setCompletedToday(0)
       }
+    }, (error) => {
+      console.error('Completed listener error:', error)
     })
 
     return () => {
@@ -122,15 +137,23 @@ function App() {
       carriedOver: false
     }
 
+    console.log('Adding task:', newTask)
     set(ref(database, `users/${userId}/tasks/${taskId}`), newTask)
+      .then(() => console.log('Task added successfully'))
+      .catch((error) => console.error('Error adding task:', error))
   }
 
   const completeTask = (taskId) => {
+    console.log('Completing task:', taskId)
     // Remove task from Firebase
     remove(ref(database, `users/${userId}/tasks/${taskId}`))
+      .then(() => console.log('Task removed successfully'))
+      .catch((error) => console.error('Error removing task:', error))
 
     // Increment completed counter
     set(ref(database, `users/${userId}/completedToday`), completedToday + 1)
+      .then(() => console.log('Completed counter updated'))
+      .catch((error) => console.error('Error updating counter:', error))
   }
 
   const totalEver = completedToday + tasks.length
