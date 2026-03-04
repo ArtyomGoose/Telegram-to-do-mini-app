@@ -162,9 +162,42 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      <DateBlock completedToday={completedToday} totalEver={totalEver} />
-      <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} />
+    <div className="app-wrapper">
+      <div className="app-header">
+        <DateBlock completedToday={completedToday} totalEver={totalEver} />
+        <div className="task-input-wrapper">
+          <input
+            type="text"
+            className="task-input"
+            placeholder="Добавить задачу..."
+            id="task-input"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const input = document.getElementById('task-input')
+                if (input.value.trim()) {
+                  addTask(input.value.trim())
+                  input.value = ''
+                }
+              }
+            }}
+          />
+          <button
+            className="add-button"
+            onClick={() => {
+              const input = document.getElementById('task-input')
+              if (input.value.trim()) {
+                addTask(input.value.trim())
+                input.value = ''
+              }
+            }}
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div className="app-tasks-scroll">
+        <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} isHeaderSeparated={true} />
+      </div>
     </div>
   )
 }

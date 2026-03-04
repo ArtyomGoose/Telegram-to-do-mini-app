@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function TaskList({ tasks, onAdd, onComplete }) {
+function TaskList({ tasks, onAdd, onComplete, isHeaderSeparated }) {
   const [inputValue, setInputValue] = useState('')
 
   const handleAddTask = () => {
@@ -18,19 +18,21 @@ function TaskList({ tasks, onAdd, onComplete }) {
 
   return (
     <div className="task-list">
-      <div className="task-input-wrapper">
-        <input
-          type="text"
-          className="task-input"
-          placeholder="Добавить задачу..."
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <button className="add-button" onClick={handleAddTask}>
-          +
-        </button>
-      </div>
+      {!isHeaderSeparated && (
+        <div className="task-input-wrapper">
+          <input
+            type="text"
+            className="task-input"
+            placeholder="Добавить задачу..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button className="add-button" onClick={handleAddTask}>
+            +
+          </button>
+        </div>
+      )}
       <ul className="tasks-list">
         {tasks.map((task) => (
           <li
