@@ -1,5 +1,5 @@
 // Белый список разрешённых Telegram ID (строки)
-export const ALLOWED_IDS = ['123456789', '987654321'] // заменить на реальные ID
+export const ALLOWED_IDS = ['668356521', '668356521'] // заменить на реальные ID
 
 // Определяем, открыто ли приложение внутри Telegram Mini App
 export function isTelegramApp() {
