@@ -162,6 +162,22 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 - Created auth gate in App.jsx with Telegram Mini App + browser modes
 - Added AccessDenied and BrowserLogin components
 - Integrated auth checks into Firebase listener startup
+- Fixed UI: removed number spinner from browser login form
+- Added retry button for browser mode (hidden in Telegram Mini App)
+- Optimized cache handling for Telegram Desktop
+
+## UI Behavior by Platform
+
+### Telegram Mini App
+- Auto-check user ID from SDK
+- Shows AccessDenied page without retry button (read-only error state)
+- No manual login form needed
+
+### Browser Mode
+- Shows manual ID input form on first visit
+- Saves ID to localStorage for future visits
+- Shows "Попробовать снова" (retry) button on AccessDenied page
+- Allows trying different IDs
 
 ## Next Steps (Optional)
 
