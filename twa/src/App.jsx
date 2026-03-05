@@ -2,25 +2,43 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
+import AccessDenied from './components/AccessDenied'
+import BrowserLogin from './components/BrowserLogin'
 import { database, ref, onValue, set, remove } from './firebase'
+import { isTelegramApp, getTelegramUserId, isAllowed } from './auth'
 
 function App() {
   const [tasks, setTasks] = useState([])
   const [completedToday, setCompletedToday] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
 
   // Use a fixed user ID so all devices share the same data
   const userId = 'shared_user'
 
-  // Debug logs
+  // Auth check on mount
   useEffect(() => {
-    console.log('App mounted')
-    console.log('User ID (SHARED):', userId)
-    console.log('Database:', database)
+    if (isTelegramApp()) {
+      const id = getTelegramUserId()
+      console.log('Telegram Mini App detected, user ID:', id)
+      setAuthStatus(isAllowed(id) ? 'allowed' : 'denied')
+    } else {
+      // Browser — check localStorage for previously entered ID
+      const saved = localStorage.getItem('twa_browser_id')
+      if (saved && isAllowed(saved)) {
+        console.log('Browser mode, valid ID from localStorage:', saved)
+        setAuthStatus('allowed')
+      } else {
+        console.log('Browser mode, need manual ID input')
+        setAuthStatus('browser_login')
+      }
+    }
   }, [])
 
-  // Initialize Firebase listeners on mount
+  // Initialize Firebase listeners only when auth is allowed
   useEffect(() => {
+    if (authStatus !== 'allowed') return
+
     const today = new Date().toISOString().slice(0, 10)
     console.log('Setting up Firebase listeners for user:', userId)
 
@@ -89,7 +107,7 @@ function App() {
       unsubscribeTasks()
       unsubscribeCompleted()
     }
-  }, [])
+  }, [authStatus])
 
   // Real-time overnight check every 60s
   useEffect(() => {
@@ -151,9 +169,39 @@ function App() {
 
   const totalEver = completedToday + tasks.length
 
+  // Auth gates
+  if (authStatus === null) {
+    return (
+      <div className="app-wrapper">
+        <div style={{ textAlign: 'center', padding: '20px', color: '#fff' }}>
+          Загрузка...
+        </div>
+      </div>
+    )
+  }
+
+  if (authStatus === 'denied') {
+    return <AccessDenied />
+  }
+
+  if (authStatus === 'browser_login') {
+    return (
+      <BrowserLogin
+        onLogin={(id) => {
+          if (isAllowed(id)) {
+            localStorage.setItem('twa_browser_id', id)
+            setAuthStatus('allowed')
+          } else {
+            setAuthStatus('denied')
+          }
+        }}
+      />
+    )
+  }
+
   if (loading) {
     return (
-      <div className="app-container">
+      <div className="app-wrapper">
         <div style={{ textAlign: 'center', padding: '20px', color: '#fff' }}>
           Загрузка...
         </div>
