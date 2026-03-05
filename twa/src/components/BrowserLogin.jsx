@@ -21,13 +21,18 @@ function BrowserLogin({ onLogin }) {
         <h1>Войти</h1>
         <p>Введите ваш Telegram ID</p>
         <input
-          type="number"
+          type="text"
           className="auth-input"
           placeholder="Ваш ID"
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => {
+            // Only allow numeric input
+            const numericValue = e.target.value.replace(/\D/g, '')
+            setInputValue(numericValue)
+          }}
           onKeyDown={handleKeyDown}
           autoFocus
+          inputMode="numeric"
         />
         <button className="auth-button" onClick={handleSubmit}>
           Войти
