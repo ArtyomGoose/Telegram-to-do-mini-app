@@ -186,16 +186,9 @@ function App() {
   if (authStatus === 'denied') {
     return (
       <AccessDenied
-        onRetry={() => {
-          // Check if we came from browser mode or Telegram
-          if (isTelegramApp()) {
-            // In Telegram, just reset to retry the check
-            setAuthStatus(null)
-          } else {
-            // In browser, go back to login form
-            localStorage.removeItem('twa_browser_id')
-            setAuthStatus('browser_login')
-          }
+        onRetry={isTelegramApp() ? undefined : () => {
+          localStorage.removeItem('twa_browser_id')
+          setAuthStatus('browser_login')
         }}
       />
     )
