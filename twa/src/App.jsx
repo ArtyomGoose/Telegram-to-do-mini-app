@@ -8,6 +8,9 @@ import { database, ref, onValue, set, remove } from './firebase'
 import { isTelegramApp, getTelegramUserId, isAllowed } from './auth'
 
 function App() {
+  // Force cache bust for Telegram
+  console.log('🔄 App version: 2.0 - Auth check enabled')
+
   const [tasks, setTasks] = useState([])
   const [completedToday, setCompletedToday] = useState(0)
   const [loading, setLoading] = useState(true)
