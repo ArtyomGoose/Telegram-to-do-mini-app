@@ -64,7 +64,9 @@ class handler(BaseHTTPRequestHandler):
         if INIT_ERROR:
             self.send_response(500)
             self.end_headers()
-            self.wfile.write(f'Firebase init error: {INIT_ERROR}'.encode())
+            raw_key = os.environ.get('FB_PRIVATE_KEY', '')
+            debug = f'Firebase init error: {INIT_ERROR}\n\nFirst 100 chars of FB_PRIVATE_KEY: {repr(raw_key[:100])}'
+            self.wfile.write(debug.encode())
             return
 
         self.send_response(200)
