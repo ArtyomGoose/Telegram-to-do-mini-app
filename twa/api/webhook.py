@@ -12,6 +12,8 @@ INIT_ERROR = None
 try:
     if not firebase_admin._apps:
         raw = os.environ['FIREBASE_CREDENTIALS_JSON']
+        # Fix literal newlines inside JSON string values (Vercel strips \n escapes)
+        raw = raw.replace('\r\n', '\\n').replace('\r', '\\n').replace('\n', '\\n')
         cred_json = json.loads(raw)
         cred_json['private_key'] = cred_json['private_key'].replace('\\n', '\n')
         cred = credentials.Certificate(cred_json)
