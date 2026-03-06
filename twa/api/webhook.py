@@ -11,11 +11,19 @@ ALLOWED_IDS = {'668356521'}
 INIT_ERROR = None
 try:
     if not firebase_admin._apps:
-        raw = os.environ['FIREBASE_CREDENTIALS_JSON']
-        # Fix literal newlines inside JSON string values (Vercel strips \n escapes)
-        raw = raw.replace('\r\n', '\\n').replace('\r', '\\n').replace('\n', '\\n')
-        cred_json = json.loads(raw)
-        cred_json['private_key'] = cred_json['private_key'].replace('\\n', '\n')
+        cred_json = {
+            "type": "service_account",
+            "project_id": os.environ['FB_PROJECT_ID'],
+            "private_key_id": os.environ['FB_PRIVATE_KEY_ID'],
+            "private_key": os.environ['FB_PRIVATE_KEY'].replace('\\n', '\n'),
+            "client_email": os.environ['FB_CLIENT_EMAIL'],
+            "client_id": os.environ['FB_CLIENT_ID'],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": os.environ['FB_CLIENT_CERT_URL'],
+            "universe_domain": "googleapis.com"
+        }
         cred = credentials.Certificate(cred_json)
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://telegram-task-app-2888d-default-rtdb.asia-southeast1.firebasedatabase.app'
