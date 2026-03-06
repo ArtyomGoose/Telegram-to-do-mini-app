@@ -1,12 +1,10 @@
 {
-  "buildCommand": "cd twa && npm install && npm run build",
+  "buildCommand": "npm install && npm run build",
   "outputDirectory": "twa/dist",
+  "rootDirectory": "twa",
   "functions": {
-    "twa/api/webhook.py": {
+    "api/webhook.py": {
       "runtime": "python3.12"
     }
-  },
-  "rewrites": [
-    { "source": "/api/webhook", "destination": "/twa/api/webhook.py" }
-  ]
+  }
 }
