@@ -11,7 +11,8 @@ ALLOWED_IDS = {'668356521'}
 INIT_ERROR = None
 try:
     if not firebase_admin._apps:
-        cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS_JSON'])
+        raw = os.environ['FIREBASE_CREDENTIALS_JSON']
+        cred_json = json.loads(raw.replace('\n', '\\n'))
         cred = credentials.Certificate(cred_json)
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://telegram-task-app-2888d-default-rtdb.asia-southeast1.firebasedatabase.app'
