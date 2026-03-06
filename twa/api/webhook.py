@@ -8,16 +8,26 @@ from firebase_admin import credentials, db
 
 ALLOWED_IDS = {'668356521'}
 
-if not firebase_admin._apps:
-    cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS_JSON'])
-    cred = credentials.Certificate(cred_json)
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://telegram-task-app-2888d-default-rtdb.asia-southeast1.firebasedatabase.app'
-    })
+INIT_ERROR = None
+try:
+    if not firebase_admin._apps:
+        cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS_JSON'])
+        cred = credentials.Certificate(cred_json)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': 'https://telegram-task-app-2888d-default-rtdb.asia-southeast1.firebasedatabase.app'
+        })
+except Exception as e:
+    INIT_ERROR = str(e)
 
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        if INIT_ERROR:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(f'Firebase init error: {INIT_ERROR}'.encode())
+            return
+
         length = int(self.headers.get('Content-Length', 0))
         body = json.loads(self.rfile.read(length))
 
@@ -39,6 +49,12 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(b'ok')
 
     def do_GET(self):
+        if INIT_ERROR:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(f'Firebase init error: {INIT_ERROR}'.encode())
+            return
+
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b'webhook ok')
