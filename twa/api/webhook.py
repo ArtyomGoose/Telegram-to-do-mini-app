@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
@@ -65,9 +66,19 @@ class handler(BaseHTTPRequestHandler):
         if INIT_ERROR:
             self.send_response(500)
             self.end_headers()
-            raw_key = os.environ.get('FB_PRIVATE_KEY', '')
-            debug = f'Firebase init error: {INIT_ERROR}\n\nFirst 100 chars of FB_PRIVATE_KEY: {repr(raw_key[:100])}'
-            self.wfile.write(debug.encode())
+            self.wfile.write(f'Firebase init error: {INIT_ERROR}'.encode())
+            return
+
+        # Регистрация webhook: /api/webhook?setup=1
+        if 'setup=1' in (self.path.split('?')[1] if '?' in self.path else ''):
+            token = os.environ.get('BOT_TOKEN', '')
+            webhook_url = 'https://telegram-to-do-mini-app.vercel.app/api/webhook'
+            api_url = f'https://api.telegram.org/bot{token}/setWebhook?url={webhook_url}'
+            with urllib.request.urlopen(api_url) as resp:
+                result = resp.read()
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(result)
             return
 
         self.send_response(200)
