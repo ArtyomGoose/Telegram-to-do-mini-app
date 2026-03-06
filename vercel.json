@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd twa && npm install && npm run build",
+  "outputDirectory": "twa/dist",
+  "functions": {
+    "api/webhook.py": {
+      "runtime": "python3.12"
+    }
+  }
+}
