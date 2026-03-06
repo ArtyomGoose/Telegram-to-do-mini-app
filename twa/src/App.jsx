@@ -4,7 +4,7 @@ import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
 import AccessDenied from './components/AccessDenied'
 import BrowserLogin from './components/BrowserLogin'
-import { database, ref, onValue, set, remove } from './firebase'
+import { database, ref, onValue, set, remove, update } from './firebase'
 import { isTelegramApp, getTelegramUserId, isAllowed } from './auth'
 
 function App() {
@@ -157,6 +157,11 @@ function App() {
       .catch((error) => console.error('Error adding task:', error))
   }
 
+  const updateTask = (taskId, newText) => {
+    update(ref(database, `users/${userId}/tasks/${taskId}`), { text: newText })
+      .catch((error) => console.error('Error updating task:', error))
+  }
+
   const completeTask = (taskId) => {
     console.log('Completing task:', taskId)
     // Remove task from Firebase
@@ -254,7 +259,7 @@ function App() {
         </div>
       </div>
       <div className="app-tasks-scroll">
-        <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} isHeaderSeparated={true} />
+        <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onUpdate={updateTask} isHeaderSeparated={true} />
       </div>
     </div>
   )

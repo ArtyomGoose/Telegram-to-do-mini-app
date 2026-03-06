@@ -12,7 +12,8 @@ A Telegram Mini App (TWA) built with React + Vite that tracks daily tasks with r
 ## Technology Stack
 
 - **Frontend:** React 18, Vite 7
-- **Backend:** Firebase Realtime Database
+- **Backend:** Firebase Realtime Database + Python Telegram Bot
+- **Bot integration:** Vercel Serverless Function (Python 3.12)
 - **Styling:** CSS with Telegram theme variables
 - **Localization:** Russian (dates, UI text)
 
@@ -23,12 +24,18 @@ project3/
 ├── CLAUDE.md                    # This file (English)
 ├── CLAUDE_RU.md                 # Russian version (for reference)
 ├── README.md
-├── bot.py                       # Python Telegram bot (separate from TWA)
-├── test_api.py
+├── bot.py                       # Python Telegram bot (local polling mode)
+├── requirements.txt             # Python dependencies for local bot
+├── .env                         # Local env vars (BOT_TOKEN, FIREBASE_CREDENTIALS_PATH)
+├── .gitignore                   # Excludes .env and serviceAccount.json
+├── vercel.json                  # Vercel config (functions runtime)
 └── twa/                         # Telegram Web App
     ├── package.json
     ├── vite.config.js
     ├── index.html
+    ├── api/
+    │   ├── webhook.py           # Vercel Serverless Function (webhook handler)
+    │   └── requirements.txt     # Python dependencies for Vercel
     ├── src/
     │   ├── main.jsx
     │   ├── App.jsx              # Main app with auth gate
@@ -87,6 +94,30 @@ Runs on app mount and every 60 seconds:
 - **Day Progress:** Tasks completed today / total tasks started today
 - Formatted as "Пятница, 27 февраля" (Russian localization)
 
+### 6. Telegram Bot Integration
+
+**Location:** `twa/api/webhook.py` (Vercel) + `bot.py` (local)
+
+Two modes of bot operation:
+
+1. **Vercel Webhook (production):** `twa/api/webhook.py` runs as a Vercel Serverless Function. Telegram sends POST requests to `https://telegram-to-do-mini-app.vercel.app/api/webhook` on every message.
+2. **Local Polling (development):** `bot.py` runs locally with `py -3.13 bot.py`.
+
+**Flow:** User sends message to bot → webhook receives it → writes task to Firebase → TWA real-time listener fires → task appears in UI instantly.
+
+**Setup endpoint:** `GET /api/webhook?setup=1` — registers the webhook URL with Telegram (call once after deploy).
+
+**Whitelist:** Same `ALLOWED_IDS` as `twa/src/auth.js` — only whitelisted users can create tasks via bot.
+
+**Vercel Environment Variables required:**
+- `BOT_TOKEN` — Telegram bot token
+- `FB_PROJECT_ID` — Firebase project ID
+- `FB_PRIVATE_KEY_ID` — Service account private key ID
+- `FB_PRIVATE_KEY` — Service account private key (Base64 encoded)
+- `FB_CLIENT_EMAIL` — Service account client email
+- `FB_CLIENT_ID` — Service account client ID
+- `FB_CLIENT_CERT_URL` — Service account client cert URL
+
 ### 5. Firebase Realtime Sync
 
 **Location:** `twa/src/firebase.js`
@@ -126,9 +157,24 @@ npm run preview  # Preview production build locally
 
 ## Deployment
 
-1. Run `npm run build` in `/twa`
-2. Deploy `dist/` folder to a static hosting service (e.g., Vercel)
-3. Register the URL in BotFather for your Telegram bot
+### Vercel (production)
+
+1. Connect GitHub repo to Vercel
+2. In Vercel Dashboard → Settings → General:
+   - **Root Directory:** `twa`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+3. Add all `FB_*` and `BOT_TOKEN` environment variables in Settings → Environment Variables
+4. Push to GitHub — Vercel deploys automatically
+5. Register webhook once: open `https://telegram-to-do-mini-app.vercel.app/api/webhook?setup=1` in browser
+
+### Local bot (development/alternative)
+
+```bash
+py -3.13 bot.py
+```
+
+Requires `.env` with `BOT_TOKEN` and `FIREBASE_CREDENTIALS_PATH`.
 
 ## Configuration
 
@@ -153,8 +199,9 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 ## File Ownership
 
-- **Python bot files** (`bot.py`, `test_api.py`) — Not touched by TWA. Managed separately.
-- **TWA files** (`twa/` directory) — Main focus. All auth/task/sync logic lives here.
+- **Local bot** (`bot.py`, `requirements.txt`, `.env`) — Local polling mode. Not deployed to Vercel.
+- **Vercel webhook** (`twa/api/webhook.py`, `twa/api/requirements.txt`) — Production bot handler. Deployed automatically with the TWA.
+- **TWA files** (`twa/src/`) — Main focus. All auth/task/sync logic lives here.
 
 ## Recent Changes
 
@@ -165,6 +212,9 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 - Fixed UI: removed number spinner from browser login form
 - Added retry button for browser mode (hidden in Telegram Mini App)
 - Optimized cache handling for Telegram Desktop
+- Added local Python bot (`bot.py`) with Firebase Admin SDK integration
+- Added Vercel Serverless webhook (`twa/api/webhook.py`) for production bot
+- Firebase credentials stored as separate env vars with Base64-encoded private key
 
 ## UI Behavior by Platform
 
@@ -188,4 +238,4 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 ---
 
-**Last Updated:** 2026-03-05
+**Last Updated:** 2026-03-06

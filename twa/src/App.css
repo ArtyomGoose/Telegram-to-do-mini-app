@@ -183,6 +183,17 @@ body {
   word-break: break-word;
 }
 
+.task-edit-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--tg-theme-button-color, #5288c1);
+  color: var(--tg-theme-text-color, #ffffff);
+  font-size: 14px;
+  outline: none;
+  padding: 0;
+}
+
 .complete-button {
   background-color: var(--tg-theme-button_color, #5288c1);
   color: var(--tg-theme-button_text_color, #ffffff);

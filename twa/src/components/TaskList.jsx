@@ -1,7 +1,9 @@
 import { useState } from 'react'
 
-function TaskList({ tasks, onAdd, onComplete, isHeaderSeparated }) {
+function TaskList({ tasks, onAdd, onComplete, onUpdate, isHeaderSeparated }) {
   const [inputValue, setInputValue] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
 
   const handleAddTask = () => {
     if (inputValue.trim()) {
@@ -13,6 +15,26 @@ function TaskList({ tasks, onAdd, onComplete, isHeaderSeparated }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleAddTask()
+    }
+  }
+
+  const startEdit = (task) => {
+    setEditingId(task.id)
+    setEditText(task.text)
+  }
+
+  const commitEdit = (originalText) => {
+    if (editText.trim() && editText.trim() !== originalText) {
+      onUpdate(editingId, editText.trim())
+    }
+    setEditingId(null)
+  }
+
+  const handleEditKeyDown = (e, originalText) => {
+    if (e.key === 'Enter') {
+      commitEdit(originalText)
+    } else if (e.key === 'Escape') {
+      setEditingId(null)
     }
   }
 
@@ -39,7 +61,23 @@ function TaskList({ tasks, onAdd, onComplete, isHeaderSeparated }) {
             key={task.id}
             className={`task-item ${task.carriedOver ? 'carried-over' : ''}`}
           >
-            <span className="task-text">{task.text}</span>
+            {editingId === task.id ? (
+              <input
+                className="task-edit-input"
+                autoFocus
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onBlur={() => commitEdit(task.text)}
+                onKeyDown={(e) => handleEditKeyDown(e, task.text)}
+              />
+            ) : (
+              <span
+                className="task-text"
+                onDoubleClick={() => startEdit(task)}
+              >
+                {task.text}
+              </span>
+            )}
             <button
               className="complete-button"
               onClick={() => onComplete(task.id)}
