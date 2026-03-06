@@ -12,7 +12,8 @@ INIT_ERROR = None
 try:
     if not firebase_admin._apps:
         raw = os.environ['FIREBASE_CREDENTIALS_JSON']
-        cred_json = json.loads(raw.replace('\n', '\\n'))
+        cred_json = json.loads(raw)
+        cred_json['private_key'] = cred_json['private_key'].replace('\\n', '\n')
         cred = credentials.Certificate(cred_json)
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://telegram-task-app-2888d-default-rtdb.asia-southeast1.firebasedatabase.app'
