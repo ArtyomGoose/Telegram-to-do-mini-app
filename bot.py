@@ -1,10 +1,12 @@
 import os
 import logging
+import tempfile
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, db
+from openai import AsyncOpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -61,6 +63,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = str(update.effective_user.id)
+
+    if user_id not in ALLOWED_IDS:
+        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        return
+
+    openai_key = os.getenv('OPENAI_API_KEY')
+    if not openai_key:
+        await update.message.reply_text("❌ OpenAI API ключ не настроен.")
+        return
+
+    try:
+        voice = update.message.voice
+        tg_file = await context.bot.get_file(voice.file_id)
+
+        with tempfile.NamedTemporaryFile(suffix='.ogg', delete=False) as f:
+            tmp_path = f.name
+        await tg_file.download_to_drive(tmp_path)
+
+        client = AsyncOpenAI(api_key=openai_key)
+        with open(tmp_path, 'rb') as f:
+            result = await client.audio.transcriptions.create(
+                model='whisper-1',
+                file=f,
+                language='ru'
+            )
+        os.unlink(tmp_path)
+
+        text = result.text.strip()
+        if not text:
+            await update.message.reply_text("❌ Не удалось распознать голосовое сообщение.")
+            return
+
+        task_id = write_task_to_firebase(text)
+        await update.message.reply_text(f"✅ Задача добавлена: «{text}»")
+        logger.info(f"User {user_id} added voice task {task_id}: '{text}'")
+
+    except Exception as e:
+        logger.error(f"Voice handler failed: {e}")
+        await update.message.reply_text("❌ Ошибка при обработке голосового сообщения.")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.effective_user.id)
 
@@ -88,6 +133,7 @@ def main() -> None:
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot started. Polling...")
