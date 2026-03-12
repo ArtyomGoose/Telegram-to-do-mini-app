@@ -77,6 +77,7 @@ Three authentication scenarios:
 
 - Add tasks with `addTask(text)` → stores in Firebase under `users/shared_user/tasks/{id}`
 - Complete tasks with `completeTask(id)` → removes from list, increments `completedToday` counter
+- Dismiss tasks with `dismissTask(id)` → removes from list **without** incrementing counter (task skipped, not counted in progress)
 - All authenticated users share the same task list (hardcoded `userId = 'shared_user'`)
 
 ### 3. Day-Change Detection
@@ -215,6 +216,8 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 - Added local Python bot (`bot.py`) with Firebase Admin SDK integration
 - Added Vercel Serverless webhook (`twa/api/webhook.py`) for production bot
 - Firebase credentials stored as separate env vars with Base64-encoded private key
+- Added inline task editing: double-click on task text to edit, Enter/blur to save, Escape to cancel
+- Added dismiss button (✕) on each task: removes task without counting toward day progress (red button)
 
 ## UI Behavior by Platform
 
@@ -233,9 +236,9 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 - Switch from shared task list to per-user data (change `userId` logic)
 - Add user profile display with Telegram avatar/name
-- Add task editing or scheduling features
+- Add task scheduling features
 - Move whitelist to Firebase for dynamic management
 
 ---
 
-**Last Updated:** 2026-03-06
+**Last Updated:** 2026-03-12
