@@ -131,6 +131,9 @@ Two modes of bot operation:
 - `FB_CLIENT_EMAIL` — Service account client email
 - `FB_CLIENT_ID` — Service account client ID
 - `FB_CLIENT_CERT_URL` — Service account client cert URL
+- `OPENAI_API_KEY` — OpenAI API key *(required for voice transcription, currently disabled)*
+
+**To enable voice transcription:** add `OPENAI_API_KEY` to Vercel env vars and `.env`, then uncomment all `# [VOICE]` blocks in `twa/api/webhook.py` and `bot.py`.
 
 ### 5. Firebase Realtime Sync
 
@@ -232,6 +235,7 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 - Added inline task editing: double-click on task text to edit, Enter/blur to save, Escape to cancel
 - Added dismiss button (✕) on each task: removes task without counting toward day progress (red button)
 - Added deadline support: date picker appears on input focus, task stores `deadline` in Firebase, background color indicates urgency (green/yellow/red)
+- Voice transcription via OpenAI Whisper prepared (bot.py + webhook.py) — currently **disabled/commented out**, pending `OPENAI_API_KEY` setup
 
 ## UI Behavior by Platform
 
