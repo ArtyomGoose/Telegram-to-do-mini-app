@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function TaskList({ tasks, onAdd, onComplete, onUpdate, isHeaderSeparated }) {
+function TaskList({ tasks, onAdd, onComplete, onDismiss, onUpdate, isHeaderSeparated }) {
   const [inputValue, setInputValue] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
@@ -83,6 +83,12 @@ function TaskList({ tasks, onAdd, onComplete, onUpdate, isHeaderSeparated }) {
               onClick={() => onComplete(task.id)}
             >
               ✓
+            </button>
+            <button
+              className="dismiss-button"
+              onClick={() => onDismiss(task.id)}
+            >
+              ✕
             </button>
           </li>
         ))}

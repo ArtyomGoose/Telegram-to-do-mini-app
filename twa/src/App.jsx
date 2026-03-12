@@ -175,6 +175,13 @@ function App() {
       .catch((error) => console.error('Error updating counter:', error))
   }
 
+  const dismissTask = (taskId) => {
+    console.log('Dismissing task:', taskId)
+    remove(ref(database, `users/${userId}/tasks/${taskId}`))
+      .then(() => console.log('Task dismissed successfully'))
+      .catch((error) => console.error('Error dismissing task:', error))
+  }
+
   const totalEver = completedToday + tasks.length
 
   // Auth gates
@@ -259,7 +266,7 @@ function App() {
         </div>
       </div>
       <div className="app-tasks-scroll">
-        <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onUpdate={updateTask} isHeaderSeparated={true} />
+        <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onDismiss={dismissTask} onUpdate={updateTask} isHeaderSeparated={true} />
       </div>
     </div>
   )
