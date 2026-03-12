@@ -169,7 +169,7 @@ body {
   background-color: var(--tg-theme-secondary-bg-color, #2b2b2b);
   padding: 12px;
   border-radius: 8px;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.8s ease;
 }
 
 .task-item.carried-over .task-text {
@@ -232,6 +232,35 @@ body {
 
 .dismiss-button:active {
   opacity: 0.8;
+}
+
+/* Deadline input */
+.deadline-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deadline-label {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #777777);
+  white-space: nowrap;
+}
+
+.deadline-input {
+  flex: 1;
+  background-color: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  color: var(--tg-theme-text-color, #ffffff);
+  border: 1px solid var(--tg-theme-hint-color, #777777);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.deadline-input:focus {
+  border-color: var(--tg-theme-button-color, #5288c1);
 }
 
 /* Auth pages styles */

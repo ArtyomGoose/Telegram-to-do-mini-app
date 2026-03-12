@@ -15,6 +15,8 @@ function App() {
   const [completedToday, setCompletedToday] = useState(0)
   const [loading, setLoading] = useState(true)
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
+  const [showDeadline, setShowDeadline] = useState(false)
+  const [deadlineValue, setDeadlineValue] = useState('')
 
   // Use a fixed user ID so all devices share the same data
   const userId = 'shared_user'
@@ -141,14 +143,20 @@ function App() {
     return () => clearInterval(interval)
   }, [userId])
 
-  const addTask = (text) => {
+  const addTask = (text, deadline) => {
     const today = new Date().toISOString().slice(0, 10)
     const taskId = Date.now().toString()
+    let taskText = text
+    if (deadline) {
+      const [, month, day] = deadline.split('-')
+      taskText = `${text} · ${day}.${month}`
+    }
     const newTask = {
       id: taskId,
-      text,
+      text: taskText,
       createdAt: today,
-      carriedOver: false
+      carriedOver: false,
+      ...(deadline ? { deadline } : {})
     }
 
     console.log('Adding task:', newTask)
@@ -241,12 +249,15 @@ function App() {
             className="task-input"
             placeholder="Добавить задачу..."
             id="task-input"
+            onFocus={() => setShowDeadline(true)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 const input = document.getElementById('task-input')
                 if (input.value.trim()) {
-                  addTask(input.value.trim())
+                  addTask(input.value.trim(), deadlineValue)
                   input.value = ''
+                  setDeadlineValue('')
+                  setShowDeadline(false)
                 }
               }
             }}
@@ -256,14 +267,27 @@ function App() {
             onClick={() => {
               const input = document.getElementById('task-input')
               if (input.value.trim()) {
-                addTask(input.value.trim())
+                addTask(input.value.trim(), deadlineValue)
                 input.value = ''
+                setDeadlineValue('')
+                setShowDeadline(false)
               }
             }}
           >
             +
           </button>
         </div>
+        {showDeadline && (
+          <div className="deadline-input-wrapper">
+            <label className="deadline-label">Дедлайн:</label>
+            <input
+              type="date"
+              className="deadline-input"
+              value={deadlineValue}
+              onChange={(e) => setDeadlineValue(e.target.value)}
+            />
+          </div>
+        )}
       </div>
       <div className="app-tasks-scroll">
         <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onDismiss={dismissTask} onUpdate={updateTask} isHeaderSeparated={true} />

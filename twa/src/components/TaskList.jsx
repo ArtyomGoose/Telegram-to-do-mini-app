@@ -1,5 +1,17 @@
 import { useState } from 'react'
 
+function getDeadlineColor(task) {
+  if (!task.deadline) return undefined
+  const created = new Date(task.createdAt).getTime()
+  const deadline = new Date(task.deadline).getTime()
+  const now = Date.now()
+  if (deadline <= created) return 'rgba(255,107,107,0.35)'
+  const ratio = (now - created) / (deadline - created)
+  if (ratio >= 0.8) return 'rgba(255,107,107,0.35)'
+  if (ratio >= 0.5) return 'rgba(255,193,7,0.3)'
+  return 'rgba(76,175,80,0.25)'
+}
+
 function TaskList({ tasks, onAdd, onComplete, onDismiss, onUpdate, isHeaderSeparated }) {
   const [inputValue, setInputValue] = useState('')
   const [editingId, setEditingId] = useState(null)
@@ -60,6 +72,7 @@ function TaskList({ tasks, onAdd, onComplete, onDismiss, onUpdate, isHeaderSepar
           <li
             key={task.id}
             className={`task-item ${task.carriedOver ? 'carried-over' : ''}`}
+            style={{ backgroundColor: getDeadlineColor(task) }}
           >
             {editingId === task.id ? (
               <input
