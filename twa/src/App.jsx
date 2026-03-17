@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
@@ -18,6 +18,7 @@ function App() {
   const [showDeadline, setShowDeadline] = useState(false)
   const [deadlineValue, setDeadlineValue] = useState('')
   const [deadlineTime, setDeadlineTime] = useState('')
+  const deadlineAreaRef = useRef(null)
 
   // Use a fixed user ID so all devices share the same data
   const userId = 'shared_user'
@@ -144,6 +145,17 @@ function App() {
     return () => clearInterval(interval)
   }, [userId])
 
+  // Hide deadline fields when clicking outside the deadline area
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showDeadline && deadlineAreaRef.current && !deadlineAreaRef.current.contains(e.target)) {
+        setShowDeadline(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showDeadline])
+
   const addTask = (text, deadline, time) => {
     const today = new Date().toISOString().slice(0, 10)
     const taskId = Date.now().toString()
@@ -248,15 +260,30 @@ function App() {
     <div className="app-wrapper">
       <div className="app-header">
         <DateBlock completedToday={completedToday} totalEver={totalEver} />
-        <div className="task-input-wrapper">
-          <input
-            type="text"
-            className="task-input"
-            placeholder="Добавить задачу..."
-            id="task-input"
-            onFocus={() => setShowDeadline(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+        <div ref={deadlineAreaRef}>
+          <div className="task-input-wrapper">
+            <input
+              type="text"
+              className="task-input"
+              placeholder="Добавить задачу..."
+              id="task-input"
+              onFocus={() => setShowDeadline(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const input = document.getElementById('task-input')
+                  if (input.value.trim()) {
+                    addTask(input.value.trim(), deadlineValue, deadlineTime)
+                    input.value = ''
+                    setDeadlineValue('')
+                    setDeadlineTime('')
+                    setShowDeadline(false)
+                  }
+                }
+              }}
+            />
+            <button
+              className="add-button"
+              onClick={() => {
                 const input = document.getElementById('task-input')
                 if (input.value.trim()) {
                   addTask(input.value.trim(), deadlineValue, deadlineTime)
@@ -265,43 +292,30 @@ function App() {
                   setDeadlineTime('')
                   setShowDeadline(false)
                 }
-              }
-            }}
-          />
-          <button
-            className="add-button"
-            onClick={() => {
-              const input = document.getElementById('task-input')
-              if (input.value.trim()) {
-                addTask(input.value.trim(), deadlineValue, deadlineTime)
-                input.value = ''
-                setDeadlineValue('')
-                setDeadlineTime('')
-                setShowDeadline(false)
-              }
-            }}
-          >
-            +
-          </button>
-        </div>
-        {showDeadline && (
-          <div className="deadline-input-wrapper">
-            <label className="deadline-label">Дедлайн:</label>
-            <input
-              type="date"
-              className="deadline-input"
-              max="9999-12-31"
-              value={deadlineValue}
-              onChange={(e) => setDeadlineValue(e.target.value)}
-            />
-            <input
-              type="time"
-              className="deadline-time-input"
-              value={deadlineTime}
-              onChange={(e) => setDeadlineTime(e.target.value)}
-            />
+              }}
+            >
+              +
+            </button>
           </div>
-        )}
+          {showDeadline && (
+            <div className="deadline-input-wrapper">
+              <label className="deadline-label">Дедлайн:</label>
+              <input
+                type="date"
+                className="deadline-input"
+                max="9999-12-31"
+                value={deadlineValue}
+                onChange={(e) => setDeadlineValue(e.target.value)}
+              />
+              <input
+                type="time"
+                className="deadline-time-input"
+                value={deadlineTime}
+                onChange={(e) => setDeadlineTime(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
       </div>
       <div className="app-tasks-scroll">
         <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onDismiss={dismissTask} onUpdate={updateTask} isHeaderSeparated={true} />
