@@ -15,6 +15,7 @@ function App() {
   const [completedToday, setCompletedToday] = useState(0)
   const [loading, setLoading] = useState(true)
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
+  const [activeTab, setActiveTab] = useState('tasks')
   const [showDeadline, setShowDeadline] = useState(false)
   const [deadlineValue, setDeadlineValue] = useState('')
   const [deadlineTime, setDeadlineTime] = useState('')
@@ -258,68 +259,114 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      <div className="app-header">
-        <DateBlock completedToday={completedToday} totalEver={totalEver} />
-        <div ref={deadlineAreaRef}>
-          <div className="task-input-wrapper">
-            <input
-              type="text"
-              className="task-input"
-              placeholder="Добавить задачу..."
-              id="task-input"
-              onFocus={() => setShowDeadline(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const input = document.getElementById('task-input')
-                  if (input.value.trim()) {
-                    addTask(input.value.trim(), deadlineValue, deadlineTime)
-                    input.value = ''
-                    setDeadlineValue('')
-                    setDeadlineTime('')
-                    setShowDeadline(false)
-                  }
-                }
-              }}
-            />
-            <button
-              className="add-button"
-              onClick={() => {
-                const input = document.getElementById('task-input')
-                if (input.value.trim()) {
-                  addTask(input.value.trim(), deadlineValue, deadlineTime)
-                  input.value = ''
-                  setDeadlineValue('')
-                  setDeadlineTime('')
-                  setShowDeadline(false)
-                }
-              }}
-            >
-              +
-            </button>
-          </div>
-          {showDeadline && (
-            <div className="deadline-input-wrapper">
-              <label className="deadline-label">Дедлайн:</label>
-              <input
-                type="date"
-                className="deadline-input"
-                max="9999-12-31"
-                value={deadlineValue}
-                onChange={(e) => setDeadlineValue(e.target.value)}
-              />
-              <input
-                type="time"
-                className="deadline-time-input"
-                value={deadlineTime}
-                onChange={(e) => setDeadlineTime(e.target.value)}
-              />
+      {activeTab === 'tasks' && (
+        <>
+          <div className="app-header">
+            <DateBlock completedToday={completedToday} totalEver={totalEver} />
+            <div ref={deadlineAreaRef}>
+              <div className="task-input-wrapper">
+                <input
+                  type="text"
+                  className="task-input"
+                  placeholder="Добавить задачу..."
+                  id="task-input"
+                  onFocus={() => setShowDeadline(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const input = document.getElementById('task-input')
+                      if (input.value.trim()) {
+                        addTask(input.value.trim(), deadlineValue, deadlineTime)
+                        input.value = ''
+                        setDeadlineValue('')
+                        setDeadlineTime('')
+                        setShowDeadline(false)
+                      }
+                    }
+                  }}
+                />
+                <button
+                  className="add-button"
+                  onClick={() => {
+                    const input = document.getElementById('task-input')
+                    if (input.value.trim()) {
+                      addTask(input.value.trim(), deadlineValue, deadlineTime)
+                      input.value = ''
+                      setDeadlineValue('')
+                      setDeadlineTime('')
+                      setShowDeadline(false)
+                    }
+                  }}
+                >
+                  +
+                </button>
+              </div>
+              {showDeadline && (
+                <div className="deadline-input-wrapper">
+                  <label className="deadline-label">Дедлайн:</label>
+                  <input
+                    type="date"
+                    className="deadline-input"
+                    max="9999-12-31"
+                    value={deadlineValue}
+                    onChange={(e) => setDeadlineValue(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    className="deadline-time-input"
+                    value={deadlineTime}
+                    onChange={(e) => setDeadlineTime(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
-      <div className="app-tasks-scroll">
-        <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onDismiss={dismissTask} onUpdate={updateTask} isHeaderSeparated={true} />
-      </div>
+          </div>
+          <div className="app-tasks-scroll">
+            <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onDismiss={dismissTask} onUpdate={updateTask} isHeaderSeparated={true} />
+          </div>
+        </>
+      )}
+      {activeTab === 'goals' && (
+        <div className="app-empty-tab">Цели</div>
+      )}
+      {activeTab === 'routine' && (
+        <div className="app-empty-tab">Рутина</div>
+      )}
+
+      <nav className="app-tabs">
+        <button
+          className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="9" y1="6" x2="20" y2="6" />
+            <line x1="9" y1="12" x2="20" y2="12" />
+            <line x1="9" y1="18" x2="20" y2="18" />
+            <polyline points="4 6 5.5 7.5 7 6" />
+            <polyline points="4 12 5.5 13.5 7 12" />
+            <polyline points="4 18 5.5 19.5 7 18" />
+          </svg>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'goals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('goals')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'routine' ? 'active' : ''}`}
+          onClick={() => setActiveTab('routine')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </button>
+      </nav>
     </div>
   )
 }

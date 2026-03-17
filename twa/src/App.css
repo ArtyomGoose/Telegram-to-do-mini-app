@@ -25,6 +25,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 
 .app-header {
@@ -343,4 +344,51 @@ body {
 
 .auth-button:active {
   opacity: 0.8;
+}
+
+/* Bottom tab bar */
+.app-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-top: 1px solid var(--tg-theme-secondary-bg-color, #2b2b2b);
+  background-color: var(--tg-theme-bg-color, #212121);
+  padding: 8px 0 env(safe-area-inset-bottom, 8px);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  color: var(--tg-theme-hint-color, #777777);
+  transition: color 0.2s ease;
+}
+
+.tab-btn svg {
+  width: 24px;
+  height: 24px;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+.tab-btn.active {
+  color: var(--tg-theme-button-color, #5288c1);
+}
+
+.tab-btn.active svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Empty tab placeholder */
+.app-empty-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tg-theme-hint-color, #777777);
+  font-size: 16px;
 }
