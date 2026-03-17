@@ -952,6 +952,12 @@ body {
   border-radius: 10px;
   padding: 8px 8px 6px;
   margin-bottom: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.routine-grid-card::-webkit-scrollbar {
+  display: none;
 }
 
 /* Days header row */
@@ -959,6 +965,7 @@ body {
   display: flex;
   align-items: center;
   margin-bottom: 4px;
+  min-width: max-content;
 }
 
 .routine-habit-col-head {
@@ -969,11 +976,11 @@ body {
 .routine-day-nums {
   display: flex;
   gap: 2px;
-  flex: 1;
 }
 
 .routine-day-num {
-  flex: 1;
+  width: 20px;
+  flex-shrink: 0;
   text-align: center;
   font-size: 8px;
   color: var(--tg-theme-hint-color, #777);
@@ -989,6 +996,7 @@ body {
   display: flex;
   align-items: center;
   margin-bottom: 3px;
+  min-width: max-content;
 }
 
 .routine-habit-name {
@@ -1006,12 +1014,12 @@ body {
 .routine-cells {
   display: flex;
   gap: 2px;
-  flex: 1;
 }
 
 .routine-cell {
-  flex: 1;
-  height: 16px;
+  width: 20px;
+  flex-shrink: 0;
+  height: 20px;
   border-radius: 3px;
   background: var(--tg-theme-bg-color, #212121);
   border: 0.5px solid rgba(255,255,255,0.08);

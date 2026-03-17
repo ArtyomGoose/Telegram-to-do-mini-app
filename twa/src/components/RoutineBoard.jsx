@@ -440,12 +440,9 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
     month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
   )
 
-  // Видимые дни в сетке: нечётные + сегодня (если чётный)
+  // Все дни месяца в сетке
   const allDays = getDaysInMonth(year, month)
-  const visibleDays = allDays.filter(d => {
-    const dayNum = parseInt(d.slice(8), 10)
-    return dayNum % 2 === 1 || d === today
-  })
+  const visibleDays = allDays
 
   // Статистики
   const maxStreak = routines.length ? Math.max(...routines.map(r => getStreak(r))) : 0
