@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
+import GoalsBoard from './components/GoalsBoard'
 import AccessDenied from './components/AccessDenied'
 import BrowserLogin from './components/BrowserLogin'
 import { database, ref, onValue, set, remove, update } from './firebase'
@@ -13,6 +14,7 @@ function App() {
 
   const [tasks, setTasks] = useState([])
   const [completedToday, setCompletedToday] = useState(0)
+  const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
   const [activeTab, setActiveTab] = useState('tasks')
@@ -111,9 +113,26 @@ function App() {
       console.error('Completed listener error:', error)
     })
 
+    // Subscribe to goals
+    const goalsRef = ref(database, `users/${userId}/goals`)
+    const unsubscribeGoals = onValue(goalsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val()
+        const arr = Object.entries(data)
+          .map(([id, g]) => ({ id, ...g }))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        setGoals(arr)
+      } else {
+        setGoals([])
+      }
+    }, (error) => {
+      console.error('Goals listener error:', error)
+    })
+
     return () => {
       unsubscribeTasks()
       unsubscribeCompleted()
+      unsubscribeGoals()
     }
   }, [authStatus])
 
@@ -206,6 +225,28 @@ function App() {
     remove(ref(database, `users/${userId}/tasks/${taskId}`))
       .then(() => console.log('Task dismissed successfully'))
       .catch((error) => console.error('Error dismissing task:', error))
+  }
+
+  const addGoal = (goal) => {
+    set(ref(database, `users/${userId}/goals/${goal.id}`), goal)
+      .catch((error) => console.error('Error adding goal:', error))
+  }
+
+  const updateGoal = (id, changes) => {
+    update(ref(database, `users/${userId}/goals/${id}`), changes)
+      .catch((error) => console.error('Error updating goal:', error))
+  }
+
+  const deleteGoal = (id) => {
+    remove(ref(database, `users/${userId}/goals/${id}`))
+      .catch((error) => console.error('Error deleting goal:', error))
+  }
+
+  const reorderGoals = (newOrder) => {
+    newOrder.forEach(({ id, order }) =>
+      update(ref(database, `users/${userId}/goals/${id}`), { order })
+        .catch((error) => console.error('Error reordering goal:', error))
+    )
   }
 
   const totalEver = completedToday + tasks.length
@@ -326,7 +367,13 @@ function App() {
         </>
       )}
       {activeTab === 'goals' && (
-        <div className="app-empty-tab">Цели</div>
+        <GoalsBoard
+          goals={goals}
+          onAdd={addGoal}
+          onUpdate={updateGoal}
+          onDelete={deleteGoal}
+          onReorder={reorderGoals}
+        />
       )}
       {activeTab === 'routine' && (
         <div className="app-empty-tab">Рутина</div>
