@@ -819,3 +819,434 @@ body {
   color: var(--tg-theme-hint-color, #777);
   font-style: italic;
 }
+
+/* ═══════════════════════════════════════════════════════
+   ROUTINE TAB — Habit Tracker
+═══════════════════════════════════════════════════════ */
+
+.routine-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Header */
+.routine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+  flex-shrink: 0;
+  background: var(--tg-theme-bg-color, #212121);
+  border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #2b2b2b);
+}
+
+.routine-month-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--tg-theme-text-color, #fff);
+}
+
+.routine-month-sub {
+  font-size: 11px;
+  color: var(--tg-theme-hint-color, #777);
+  margin-top: 1px;
+}
+
+.routine-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.routine-nav-btn {
+  background: none;
+  border: none;
+  color: var(--tg-theme-button-color, #5288c1);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.routine-add-btn {
+  background: none;
+  border: none;
+  color: var(--tg-theme-button-color, #5288c1);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Stats strip */
+.routine-stats {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  flex-shrink: 0;
+  background: var(--tg-theme-bg-color, #212121);
+}
+
+.routine-stat {
+  flex: 1;
+  background: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  border-radius: 8px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.routine-stat-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tg-theme-text-color, #fff);
+}
+
+.routine-stat-key {
+  font-size: 9px;
+  color: var(--tg-theme-hint-color, #777);
+  margin-top: 2px;
+}
+
+/* Scroll area */
+.routine-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Chart card */
+.routine-chart-card {
+  background: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  border-radius: 10px;
+  padding: 10px 10px 6px;
+  flex-shrink: 0;
+}
+
+.routine-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tg-theme-hint-color, #777);
+}
+
+.routine-chart-avg {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--tg-theme-button-color, #5288c1);
+  background: rgba(82, 136, 193, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Grid card */
+.routine-grid-card {
+  background: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  border-radius: 10px;
+  padding: 8px 8px 6px;
+  margin-bottom: 8px;
+}
+
+/* Days header row */
+.routine-days-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.routine-habit-col-head {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.routine-day-nums {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.routine-day-num {
+  flex: 1;
+  text-align: center;
+  font-size: 8px;
+  color: var(--tg-theme-hint-color, #777);
+}
+
+.routine-day-num.today {
+  color: var(--tg-theme-button-color, #5288c1);
+  font-weight: 600;
+}
+
+/* Habit row */
+.routine-habit-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.routine-habit-name {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--tg-theme-text-color, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 4px;
+  cursor: pointer;
+}
+
+.routine-cells {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.routine-cell {
+  flex: 1;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--tg-theme-bg-color, #212121);
+  border: 0.5px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.routine-cell:active {
+  opacity: 0.7;
+}
+
+.routine-cell.done {
+  border-color: transparent;
+}
+
+.routine-cell.today-done {
+  outline: 1.5px solid var(--tg-theme-button-color, #5288c1);
+  outline-offset: 1.5px;
+}
+
+.routine-cell.today-empty {
+  outline: 1.5px solid rgba(255,255,255,0.25);
+  outline-offset: 1.5px;
+}
+
+.routine-cell.off {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Grid footer */
+.routine-grid-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 0.5px solid rgba(255,255,255,0.06);
+  margin-top: 4px;
+}
+
+.routine-add-link {
+  background: none;
+  border: none;
+  color: var(--tg-theme-button-color, #5288c1);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.routine-today-score {
+  font-size: 11px;
+  color: var(--tg-theme-hint-color, #777);
+}
+
+.routine-empty-hint {
+  text-align: center;
+  color: var(--tg-theme-hint-color, #777);
+  font-size: 12px;
+  padding: 16px 8px;
+}
+
+/* ── Add form specific ── */
+.routine-form-emoji-preview {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.routine-emoji-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.routine-emoji-chip {
+  width: 34px;
+  height: 34px;
+  background: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.routine-emoji-chip.sel {
+  border-color: var(--tg-theme-button-color, #5288c1);
+  background: rgba(82,136,193,0.15);
+}
+
+.routine-color-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.routine-color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+
+.routine-color-dot.sel {
+  outline: 2px solid var(--tg-theme-button-color, #5288c1);
+  outline-offset: 2px;
+}
+
+.routine-days-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.routine-day-chip {
+  flex: 1;
+  height: 30px;
+  background: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--tg-theme-hint-color, #777);
+  cursor: pointer;
+}
+
+.routine-day-chip.sel {
+  background: var(--tg-theme-button-color, #5288c1);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ── Detail sheet ── */
+.habit-detail-sheet {
+  max-height: 92vh;
+}
+
+.habit-detail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.habit-back-btn {
+  background: none;
+  border: none;
+  color: var(--tg-theme-button-color, #5288c1);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.habit-detail-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tg-theme-text-color, #fff);
+}
+
+.habit-edit-btn {
+  background: none;
+  border: none;
+  color: var(--tg-theme-hint-color, #777);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.habit-big-stat {
+  text-align: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+}
+
+.habit-big-pct {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.habit-big-sub {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #777);
+  margin-top: 4px;
+}
+
+.habit-mini-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.habit-mini-stat {
+  text-align: center;
+}
+
+.habit-mini-val {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tg-theme-text-color, #fff);
+}
+
+.habit-mini-key {
+  font-size: 10px;
+  color: var(--tg-theme-hint-color, #777);
+  margin-top: 2px;
+}
+
+/* Month grid in detail */
+.habit-month-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.habit-month-cell {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--tg-theme-bg-color, #212121);
+  border: 0.5px solid rgba(255,255,255,0.08);
+}
+
+.habit-month-cell.today {
+  outline: 1.5px solid var(--tg-theme-button-color, #5288c1);
+  outline-offset: 1.5px;
+}
+
+.habit-month-cell.future {
+  opacity: 0.3;
+}

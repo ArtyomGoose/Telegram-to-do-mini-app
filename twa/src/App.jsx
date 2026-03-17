@@ -3,6 +3,7 @@ import './App.css'
 import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
 import GoalsBoard from './components/GoalsBoard'
+import RoutineBoard from './components/RoutineBoard'
 import AccessDenied from './components/AccessDenied'
 import BrowserLogin from './components/BrowserLogin'
 import { database, ref, onValue, set, remove, update } from './firebase'
@@ -15,6 +16,7 @@ function App() {
   const [tasks, setTasks] = useState([])
   const [completedToday, setCompletedToday] = useState(0)
   const [goals, setGoals] = useState([])
+  const [routines, setRoutines] = useState([])
   const [loading, setLoading] = useState(true)
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
   const [activeTab, setActiveTab] = useState('tasks')
@@ -129,10 +131,26 @@ function App() {
       console.error('Goals listener error:', error)
     })
 
+    // Subscribe to routines
+    const routinesRef = ref(database, `users/${userId}/routines`)
+    const unsubscribeRoutines = onValue(routinesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const arr = Object.entries(snapshot.val())
+          .map(([id, r]) => ({ id, ...r }))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        setRoutines(arr)
+      } else {
+        setRoutines([])
+      }
+    }, (error) => {
+      console.error('Routines listener error:', error)
+    })
+
     return () => {
       unsubscribeTasks()
       unsubscribeCompleted()
       unsubscribeGoals()
+      unsubscribeRoutines()
     }
   }, [authStatus])
 
@@ -247,6 +265,33 @@ function App() {
       update(ref(database, `users/${userId}/goals/${id}`), { order })
         .catch((error) => console.error('Error reordering goal:', error))
     )
+  }
+
+  const addRoutine = (r) => {
+    set(ref(database, `users/${userId}/routines/${r.id}`), r)
+      .catch((error) => console.error('Error adding routine:', error))
+  }
+
+  const updateRoutine = (id, changes) => {
+    update(ref(database, `users/${userId}/routines/${id}`), changes)
+      .catch((error) => console.error('Error updating routine:', error))
+  }
+
+  const deleteRoutine = (id) => {
+    remove(ref(database, `users/${userId}/routines/${id}`))
+      .catch((error) => console.error('Error deleting routine:', error))
+  }
+
+  const toggleRoutineDay = (id, date) => {
+    const routine = routines.find((r) => r.id === id)
+    const done = routine?.completions?.[date]
+    if (done) {
+      remove(ref(database, `users/${userId}/routines/${id}/completions/${date}`))
+        .catch((error) => console.error('Error toggling routine:', error))
+    } else {
+      set(ref(database, `users/${userId}/routines/${id}/completions/${date}`), true)
+        .catch((error) => console.error('Error toggling routine:', error))
+    }
   }
 
   const totalEver = completedToday + tasks.length
@@ -376,7 +421,13 @@ function App() {
         />
       )}
       {activeTab === 'routine' && (
-        <div className="app-empty-tab">Рутина</div>
+        <RoutineBoard
+          routines={routines}
+          onAdd={addRoutine}
+          onUpdate={updateRoutine}
+          onDelete={deleteRoutine}
+          onToggleDay={toggleRoutineDay}
+        />
       )}
 
       <nav className="app-tabs">
