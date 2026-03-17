@@ -2,8 +2,10 @@
 
 ## Overview
 
-A Telegram Mini App (TWA) built with React + Vite that tracks daily tasks with real-time synchronization via Firebase. Features include:
-- Task management with completion tracking
+A Telegram Mini App (TWA) built with React + Vite that tracks daily tasks and goals with real-time synchronization via Firebase. Features include:
+- Task management with completion tracking and deadlines
+- Goals / Vision Board with photo mosaic layout
+- Bottom tab bar navigation (Tasks, Goals, Routine)
 - Daily and yearly progress bars (Russian localization)
 - Access control: whitelist-based authentication by Telegram user ID
 - Real-time synchronization across devices
@@ -38,14 +40,15 @@ project3/
     │   └── requirements.txt     # Python dependencies for Vercel
     ├── src/
     │   ├── main.jsx
-    │   ├── App.jsx              # Main app with auth gate
-    │   ├── App.css              # Styles (dark theme + auth pages)
+    │   ├── App.jsx              # Main app with auth gate + tab routing
+    │   ├── App.css              # Styles (dark theme + all components)
     │   ├── index.css            # Global styles
     │   ├── auth.js              # Auth utilities and whitelist
     │   ├── firebase.js          # Firebase config and exports
     │   └── components/
     │       ├── DateBlock.jsx    # Date + progress bars
     │       ├── TaskList.jsx     # Task list UI
+    │       ├── GoalsBoard.jsx   # Vision Board (Goals tab)
     │       ├── AccessDenied.jsx # Error page (access denied)
     │       └── BrowserLogin.jsx # Login form (browser only)
     └── dist/                    # Production build (after `npm run build`)
@@ -71,7 +74,18 @@ Three authentication scenarios:
 - `'denied'` → AccessDenied page shown
 - `'browser_login'` → Login form shown
 
-### 2. Task Management
+### 2. Bottom Tab Bar
+
+**Location:** `twa/src/App.jsx` (state: `activeTab`)
+
+Three tabs, icons only, at the bottom of the screen:
+- **Задачи** (Tasks) — checklist icon
+- **Цели** (Goals) — target icon
+- **Рутина** (Routine) — refresh icon (placeholder, empty)
+
+Active tab icon: 28px, accent color. Inactive: 24px, hint color. Smooth CSS transition.
+
+### 3. Task Management
 
 **Location:** `twa/src/App.jsx`
 
@@ -82,7 +96,7 @@ Three authentication scenarios:
 
 #### Deadlines
 
-- Click on the task input field → a date + time picker appears below it
+- Click on the task input field → date + time pickers appear below it; clicking outside hides them
 - After pressing `+` or Enter, the pickers hide
 - Year input is limited to 4 digits (`max="9999-12-31"`)
 - If no date selected: task added as usual
@@ -95,14 +109,51 @@ Three authentication scenarios:
 - Smooth CSS transition: `background-color 0.8s ease`
 - Color is recalculated on every app open/page refresh (not in real-time)
 
-### 3. Day-Change Detection
+### 4. Goals / Vision Board
+
+**Location:** `twa/src/components/GoalsBoard.jsx`
+
+Mosaic photo grid where each cell represents a goal.
+
+#### Layout
+- CSS Grid, 2 columns, square cells
+- Small cell: 1×1 (default), Large cell: 2×1 (full width)
+- Each cell: photo fills the cell, emoji + title label overlaid at bottom
+
+#### Goal Data Structure (Firebase: `users/shared_user/goals/{id}`)
+```
+id: string
+title: string
+emoji: string
+description: string
+deadline: string | null     // "YYYY-MM-DD"
+imageBase64: string | null  // JPEG compressed to 1200px, quality 0.85
+completed: boolean
+order: number               // display order in grid
+size: 'small' | 'large'
+createdAt: string
+```
+
+#### Interactions
+- **Tap cell** → bottom sheet with details (description editable, deadline, "Mark complete" button)
+- **Tap + cell** → add form (title, emoji, description, deadline, photo upload)
+- **Photo upload:** compressed client-side via canvas (max 1200px, JPEG 85%) before storing as base64 in Firebase
+- **Edit mode** (Ред. button in header):
+  - Drag & drop to reorder cells
+  - ✕ button to delete goal
+  - ⊞/⊟ button to toggle cell size (small ↔ large)
+
+#### Footer
+- Progress bar + "Целей: N" + "Выполнено: M"
+
+### 5. Day-Change Detection
 
 Runs on app mount and every 60 seconds:
 - Compares stored date (`localStorage.twa_last_date`) with current date
 - If dates differ: marks all incomplete tasks as `carriedOver: true` (displayed in red)
 - Resets `completedToday` counter to 0
 
-### 4. Progress Bars
+### 6. Progress Bars
 
 **Location:** `twa/src/components/DateBlock.jsx`
 
@@ -110,7 +161,7 @@ Runs on app mount and every 60 seconds:
 - **Day Progress:** Tasks completed today / total tasks started today
 - Formatted as "Пятница, 27 февраля" (Russian localization)
 
-### 6. Telegram Bot Integration
+### 7. Telegram Bot Integration
 
 **Location:** `twa/api/webhook.py` (Vercel) + `bot.py` (local)
 
@@ -137,18 +188,20 @@ Two modes of bot operation:
 
 **To enable voice transcription:** add `OPENAI_API_KEY` to Vercel env vars and `.env`, then uncomment all `# [VOICE]` blocks in `twa/api/webhook.py` and `bot.py`.
 
-### 5. Firebase Realtime Sync
+### 8. Firebase Realtime Sync
 
 **Location:** `twa/src/firebase.js`
 
-- Real-time listeners on tasks and completed counter
+- Real-time listeners on tasks, completed counter, and goals
 - Data structure:
   ```
   users/
     shared_user/
       tasks/
-        {id}: { id, text, createdAt, carriedOver }
+        {id}: { id, text, createdAt, carriedOver, deadline? }
       completedToday: {number}
+      goals/
+        {id}: { id, title, emoji, description, deadline, imageBase64, completed, order, size, createdAt }
   ```
 - Listeners only start after auth is confirmed
 
@@ -210,34 +263,35 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 ## Important Notes
 
-- **Shared Task List:** All authenticated users see and modify the same task list. To switch to per-user data, change `userId` from `'shared_user'` to the authenticated user's ID.
+- **Shared Data:** All authenticated users see and modify the same tasks and goals. To switch to per-user data, change `userId` from `'shared_user'` to the authenticated user's ID.
 - **localStorage Keys:**
   - `twa_last_date` — Last app open date (YYYY-MM-DD)
   - `twa_browser_id` — User-entered Telegram ID (browser only)
 - **Telegram SDK:** Loaded synchronously in `index.html` before any other scripts. Optional chaining (`?.`) guards against missing SDK in plain browser mode.
+- **Goals photos:** Stored as base64 in Firebase (no external storage). Compressed to 1200px JPEG 85% ≈ 100–300KB per photo.
 
 ## File Ownership
 
 - **Local bot** (`bot.py`, `requirements.txt`, `.env`) — Local polling mode. Not deployed to Vercel.
 - **Vercel webhook** (`twa/api/webhook.py`, `twa/api/requirements.txt`) — Production bot handler. Deployed automatically with the TWA.
-- **TWA files** (`twa/src/`) — Main focus. All auth/task/sync logic lives here.
+- **TWA files** (`twa/src/`) — Main focus. All auth/task/goal/sync logic lives here.
 
 ## Recent Changes
 
 - Added access control system with whitelist authentication
 - Created auth gate in App.jsx with Telegram Mini App + browser modes
 - Added AccessDenied and BrowserLogin components
-- Integrated auth checks into Firebase listener startup
-- Fixed UI: removed number spinner from browser login form
-- Added retry button for browser mode (hidden in Telegram Mini App)
-- Optimized cache handling for Telegram Desktop
 - Added local Python bot (`bot.py`) with Firebase Admin SDK integration
 - Added Vercel Serverless webhook (`twa/api/webhook.py`) for production bot
-- Firebase credentials stored as separate env vars with Base64-encoded private key
 - Added inline task editing: double-click on task text to edit, Enter/blur to save, Escape to cancel
-- Added dismiss button (✕) on each task: removes task without counting toward day progress (red button)
-- Added deadline support: date + time picker appears on input focus, task stores `deadline` in Firebase (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`), background color indicates urgency (green/yellow/red); year limited to 4 digits
-- Voice transcription via OpenAI Whisper prepared (bot.py + webhook.py) — currently **disabled/commented out**, pending `OPENAI_API_KEY` setup
+- Added dismiss button (✕) on each task: removes task without counting toward day progress
+- Added deadline support: date + time picker, background color urgency, year limited to 4 digits
+- Deadline pickers appear on input focus, hide on outside click
+- Voice transcription via OpenAI Whisper prepared — currently **disabled**, pending `OPENAI_API_KEY`
+- Added bottom tab bar: Tasks / Goals / Routine (icons only, active icon scales up)
+- Added Goals tab: Vision Board mosaic grid with photo cells
+- Goals: tap → detail sheet, + → add form, Edit mode → drag/drop/delete/resize
+- Goals photo stored as base64 (1200px, JPEG 85%) in Firebase
 
 ## UI Behavior by Platform
 
@@ -254,11 +308,11 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 ## Next Steps (Optional)
 
-- Switch from shared task list to per-user data (change `userId` logic)
+- Implement Routine tab
+- Switch from shared data to per-user data (change `userId` logic)
 - Add user profile display with Telegram avatar/name
-- Add task scheduling features
 - Move whitelist to Firebase for dynamic management
 
 ---
 
-**Last Updated:** 2026-03-12 (deadlines feature)
+**Last Updated:** 2026-03-17 (Goals Vision Board + tab bar)
