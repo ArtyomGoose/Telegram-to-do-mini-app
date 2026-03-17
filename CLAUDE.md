@@ -75,17 +75,19 @@ Three authentication scenarios:
 
 **Location:** `twa/src/App.jsx`
 
-- Add tasks with `addTask(text, deadline?)` → stores in Firebase under `users/shared_user/tasks/{id}`
+- Add tasks with `addTask(text, deadline?, time?)` → stores in Firebase under `users/shared_user/tasks/{id}`
 - Complete tasks with `completeTask(id)` → removes from list, increments `completedToday` counter
 - Dismiss tasks with `dismissTask(id)` → removes from list **without** incrementing counter (task skipped, not counted in progress)
 - All authenticated users share the same task list (hardcoded `userId = 'shared_user'`)
 
 #### Deadlines
 
-- Click on the task input field → a date picker appears below it
-- After pressing `+` or Enter, the date picker hides
+- Click on the task input field → a date + time picker appears below it
+- After pressing `+` or Enter, the pickers hide
+- Year input is limited to 4 digits (`max="9999-12-31"`)
 - If no date selected: task added as usual
-- If date selected: ` · DD.MM` is appended to task text, `deadline: "YYYY-MM-DD"` stored in Firebase
+- If date selected (no time): ` · DD.MM` is appended to task text, `deadline: "YYYY-MM-DD"` stored in Firebase
+- If date + time selected: ` · DD.MM HH:MM` is appended to task text, `deadline: "YYYY-MM-DDTHH:MM"` stored in Firebase
 - Task background color indicates time remaining (calculated on page load/refresh):
   - Green `rgba(76,175,80,0.25)` — less than 50% of time elapsed
   - Yellow `rgba(255,193,7,0.3)` — 50–80% elapsed
@@ -234,7 +236,7 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 - Firebase credentials stored as separate env vars with Base64-encoded private key
 - Added inline task editing: double-click on task text to edit, Enter/blur to save, Escape to cancel
 - Added dismiss button (✕) on each task: removes task without counting toward day progress (red button)
-- Added deadline support: date picker appears on input focus, task stores `deadline` in Firebase, background color indicates urgency (green/yellow/red)
+- Added deadline support: date + time picker appears on input focus, task stores `deadline` in Firebase (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`), background color indicates urgency (green/yellow/red); year limited to 4 digits
 - Voice transcription via OpenAI Whisper prepared (bot.py + webhook.py) — currently **disabled/commented out**, pending `OPENAI_API_KEY` setup
 
 ## UI Behavior by Platform

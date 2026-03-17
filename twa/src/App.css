@@ -263,6 +263,22 @@ body {
   border-color: var(--tg-theme-button-color, #5288c1);
 }
 
+.deadline-time-input {
+  background-color: var(--tg-theme-secondary-bg-color, #2b2b2b);
+  color: var(--tg-theme-text-color, #ffffff);
+  border: 1px solid var(--tg-theme-hint-color, #777777);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  color-scheme: dark;
+  width: 110px;
+}
+
+.deadline-time-input:focus {
+  border-color: var(--tg-theme-button-color, #5288c1);
+}
+
 /* Auth pages styles */
 .auth-page {
   width: 100%;

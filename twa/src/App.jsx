@@ -17,6 +17,7 @@ function App() {
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
   const [showDeadline, setShowDeadline] = useState(false)
   const [deadlineValue, setDeadlineValue] = useState('')
+  const [deadlineTime, setDeadlineTime] = useState('')
 
   // Use a fixed user ID so all devices share the same data
   const userId = 'shared_user'
@@ -143,20 +144,24 @@ function App() {
     return () => clearInterval(interval)
   }, [userId])
 
-  const addTask = (text, deadline) => {
+  const addTask = (text, deadline, time) => {
     const today = new Date().toISOString().slice(0, 10)
     const taskId = Date.now().toString()
     let taskText = text
     if (deadline) {
       const [, month, day] = deadline.split('-')
-      taskText = `${text} · ${day}.${month}`
+      const timeSuffix = time ? ` ${time}` : ''
+      taskText = `${text} · ${day}.${month}${timeSuffix}`
     }
+    const deadlineStored = deadline
+      ? (time ? `${deadline}T${time}` : deadline)
+      : undefined
     const newTask = {
       id: taskId,
       text: taskText,
       createdAt: today,
       carriedOver: false,
-      ...(deadline ? { deadline } : {})
+      ...(deadlineStored ? { deadline: deadlineStored } : {})
     }
 
     console.log('Adding task:', newTask)
@@ -254,9 +259,10 @@ function App() {
               if (e.key === 'Enter') {
                 const input = document.getElementById('task-input')
                 if (input.value.trim()) {
-                  addTask(input.value.trim(), deadlineValue)
+                  addTask(input.value.trim(), deadlineValue, deadlineTime)
                   input.value = ''
                   setDeadlineValue('')
+                  setDeadlineTime('')
                   setShowDeadline(false)
                 }
               }
@@ -267,9 +273,10 @@ function App() {
             onClick={() => {
               const input = document.getElementById('task-input')
               if (input.value.trim()) {
-                addTask(input.value.trim(), deadlineValue)
+                addTask(input.value.trim(), deadlineValue, deadlineTime)
                 input.value = ''
                 setDeadlineValue('')
+                setDeadlineTime('')
                 setShowDeadline(false)
               }
             }}
@@ -283,8 +290,15 @@ function App() {
             <input
               type="date"
               className="deadline-input"
+              max="9999-12-31"
               value={deadlineValue}
               onChange={(e) => setDeadlineValue(e.target.value)}
+            />
+            <input
+              type="time"
+              className="deadline-time-input"
+              value={deadlineTime}
+              onChange={(e) => setDeadlineTime(e.target.value)}
             />
           </div>
         )}
