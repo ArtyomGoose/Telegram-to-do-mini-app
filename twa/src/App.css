@@ -963,7 +963,7 @@ body {
 /* Левая колонка с именами привычек — не скроллится */
 .routine-names-col {
   flex-shrink: 0;
-  width: 80px;
+  width: 100px;
   padding-right: 4px;
 }
 
@@ -1045,12 +1045,10 @@ body {
 }
 
 .routine-cell.today-done {
-  outline: 1.5px solid var(--tg-theme-button-color, #5288c1);
   outline-offset: 1.5px;
 }
 
 .routine-cell.today-empty {
-  outline: 1.5px solid rgba(255,255,255,0.25);
   outline-offset: 1.5px;
 }
 

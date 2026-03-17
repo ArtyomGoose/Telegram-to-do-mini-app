@@ -560,7 +560,10 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
                       <div
                         key={dateStr}
                         className={`routine-cell${done ? ' done' : ''}${isToday && done ? ' today-done' : ''}${isToday && !done ? ' today-empty' : ''}${!scheduled ? ' off' : ''}`}
-                        style={done ? { background: habit.color } : undefined}
+                        style={{
+                          ...(done ? { background: habit.color } : {}),
+                          ...(isToday ? { outline: `2px solid ${habit.color}`, outlineOffset: '1.5px' } : {}),
+                        }}
                         onClick={() => scheduled && onToggleDay(habit.id, dateStr)}
                       />
                     )
