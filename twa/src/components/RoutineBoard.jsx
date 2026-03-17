@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PRESET_EMOJIS = ['💧', '🏃', '📚', '🧘', '🚫', '💊', '🏊', '🥗', '😴', '✍️', '🎯', '🧹']
@@ -424,6 +424,7 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
   const [viewMonth, setViewMonth] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [showAddForm, setShowAddForm] = useState(false)
   const [selectedHabit, setSelectedHabit] = useState(null)
+  const cellsScrollRef = useRef(null)
 
   const today = now.toISOString().slice(0, 10)
   const { year, month } = viewMonth
@@ -444,9 +445,26 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
   const allDays = getDaysInMonth(year, month)
   const visibleDays = allDays
 
+  // Скролл к сегодняшней ячейке при монтировании и смене месяца
+  useEffect(() => {
+    const el = cellsScrollRef.current
+    if (!el) return
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
+    if (!isCurrentMonth) {
+      el.scrollLeft = 0
+      return
+    }
+    // Ширина ячейки (20px) + gap (2px) = 22px на ячейку
+    const CELL_W = 22
+    const todayIdx = now.getDate() - 1
+    // Центрируем сегодня в видимой области
+    const scrollTo = todayIdx * CELL_W - el.clientWidth / 2 + CELL_W / 2
+    el.scrollLeft = Math.max(0, scrollTo)
+  }, [year, month])
+
   // Статистики
   const maxStreak = routines.length ? Math.max(...routines.map(r => getStreak(r))) : 0
-  const record = maxStreak // TODO: persist record separately if needed
+  const record = maxStreak
   const monthPctAll = routines.length
     ? Math.round(routines.map(r => getMonthPct(r, year, month)).reduce((a, b) => a + b, 0) / routines.length)
     : 0
@@ -498,34 +516,61 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
 
         {/* Сетка привычек */}
         <div className="routine-grid-card">
-          {routines.length > 0 && (
-            <div className="routine-days-header">
-              <div className="routine-habit-col-head" />
-              <div className="routine-day-nums">
-                {visibleDays.map(d => {
-                  const dayNum = parseInt(d.slice(8), 10)
-                  const isToday = d === today
-                  return (
-                    <div key={d} className={`routine-day-num${isToday ? ' today' : ''}`}>
-                      {dayNum}
-                    </div>
-                  )
-                })}
-              </div>
+          {/* Строка: фиксированная колонка имён + скролл-область ячеек */}
+          <div className="routine-grid-inner">
+            {/* Левая фиксированная колонка */}
+            <div className="routine-names-col">
+              {/* Пустая шапка над именами */}
+              {routines.length > 0 && <div className="routine-names-head" />}
+              {routines.map(habit => (
+                <div
+                  key={habit.id}
+                  className="routine-habit-name"
+                  onClick={() => setSelectedHabit(habit)}
+                >
+                  {habit.emoji} {habit.name}
+                </div>
+              ))}
             </div>
-          )}
 
-          {routines.map(habit => (
-            <HabitRow
-              key={habit.id}
-              habit={habit}
-              visibleDays={visibleDays}
-              today={today}
-              onTapName={() => setSelectedHabit(habit)}
-              onToggle={(date) => onToggleDay(habit.id, date)}
-            />
-          ))}
+            {/* Правая скролл-область (числа + ячейки) */}
+            <div className="routine-cells-scroll" ref={cellsScrollRef}>
+              {/* Числа дней */}
+              {routines.length > 0 && (
+                <div className="routine-day-nums">
+                  {visibleDays.map(d => {
+                    const dayNum = parseInt(d.slice(8), 10)
+                    const isToday = d === today
+                    return (
+                      <div key={d} className={`routine-day-num${isToday ? ' today' : ''}`}>
+                        {dayNum}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {/* Ряды ячеек */}
+              {routines.map(habit => (
+                <div key={habit.id} className="routine-cells">
+                  {visibleDays.map(dateStr => {
+                    const done = isDone(habit, dateStr)
+                    const isToday = dateStr === today
+                    const scheduled = isScheduled(habit, dateStr)
+                    return (
+                      <div
+                        key={dateStr}
+                        className={`routine-cell${done ? ' done' : ''}${isToday && done ? ' today-done' : ''}${isToday && !done ? ' today-empty' : ''}${!scheduled ? ' off' : ''}`}
+                        style={done ? { background: habit.color } : undefined}
+                        onClick={() => scheduled && onToggleDay(habit.id, dateStr)}
+                      />
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
 
+          {/* Footer — всегда виден, вне скролла */}
           <div className="routine-grid-footer">
             <button className="routine-add-link" onClick={() => setShowAddForm(true)}>+ Привычка</button>
             {routines.length > 0 && (
