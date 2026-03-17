@@ -500,6 +500,15 @@ body {
   font-weight: 600;
   color: #ffffff;
   line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.goal-cell-label-emoji {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 /* Done badge */

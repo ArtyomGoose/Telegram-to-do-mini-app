@@ -209,7 +209,7 @@ function GoalCell({ goal, editMode, onTap, onDelete, onResize, onDragStart, onDr
         : <div className="goal-cell-placeholder">{goal.emoji || '🎯'}</div>
       }
       <div className="goal-cell-label">
-        {goal.emoji && !goal.imageBase64 && null}
+        {goal.emoji && <span className="goal-cell-label-emoji">{goal.emoji}</span>}
         <span>{goal.title}</span>
       </div>
       {goal.completed && <div className="goal-cell-done-badge">✓</div>}
