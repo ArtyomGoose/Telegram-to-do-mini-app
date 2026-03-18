@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const PRESET_EMOJIS = ['💧', '🏃', '📚', '🧘', '🚫', '💊', '🏊', '🥗', '😴', '✍️', '🎯', '🧹']
-const PRESET_COLORS = ['#5288c1', '#6BC597', '#E07A5F', '#C4A0D4', '#F4A23C', '#E07AB0']
+const PRESET_EMOJIS = ['💧', '🏃', '📚', '🧘', '🚫', '💊', '💪', '🥗', '☀️', '🎯', '🎸', '🖊']
+const PRESET_COLORS = ['#4FA3E0', '#6BC597', '#E07A5F', '#C4A0D4', '#F4A23C', '#E07AB0', '#5BC4C4', '#A0C44F']
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
 const MONTH_NAMES_GEN = [
@@ -16,7 +16,6 @@ const MONTH_NAMES_NOM = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Возвращает массив строк "YYYY-MM-DD" для всех дней месяца */
 function getDaysInMonth(year, month) {
   const count = new Date(year, month + 1, 0).getDate()
   return Array.from({ length: count }, (_, i) => {
@@ -25,7 +24,6 @@ function getDaysInMonth(year, month) {
   })
 }
 
-/** День недели строки YYYY-MM-DD: 1=Пн … 7=Вс */
 function getDayOfWeek(dateStr) {
   const d = new Date(dateStr)
   return d.getDay() === 0 ? 7 : d.getDay()
@@ -40,7 +38,15 @@ function isScheduled(routine, dateStr) {
   return routine.days.includes(getDayOfWeek(dateStr))
 }
 
-/** Текущая серия выполнения (считаем до сегодня включительно) */
+/** Последние 12 прошедших дней + до 3 будущих */
+function getVisibleDays(year, month) {
+  const today = new Date().toISOString().slice(0, 10)
+  const all = getDaysInMonth(year, month)
+  const past = all.filter(d => d <= today)
+  const future = all.filter(d => d > today).slice(0, 3)
+  return [...past.slice(-12), ...future]
+}
+
 function getStreak(routine) {
   const today = new Date().toISOString().slice(0, 10)
   let streak = 0
@@ -59,7 +65,6 @@ function getStreak(routine) {
   return streak
 }
 
-/** % выполнения за месяц */
 function getMonthPct(routine, year, month) {
   const today = new Date().toISOString().slice(0, 10)
   const days = getDaysInMonth(year, month).filter(d => d <= today)
@@ -69,7 +74,6 @@ function getMonthPct(routine, year, month) {
   return Math.round((done / scheduled.length) * 100)
 }
 
-/** Количество выполнений и пропусков в месяце */
 function getMonthStats(routine, year, month) {
   const today = new Date().toISOString().slice(0, 10)
   const days = getDaysInMonth(year, month).filter(d => d <= today && isScheduled(routine, d))
@@ -77,7 +81,6 @@ function getMonthStats(routine, year, month) {
   return { done, missed: days.length - done }
 }
 
-/** % продуктивности за конкретный день (все привычки) */
 function getDayScore(routines, dateStr) {
   const scheduled = routines.filter(r => isScheduled(r, dateStr))
   if (scheduled.length === 0) return null
@@ -92,97 +95,91 @@ function ProductivityChart({ routines, year, month }) {
   if (days.length === 0) return null
 
   const scores = days.map(d => getDayScore(routines, d) ?? 0)
-  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100) : 0
+  const avgScore = scores.length
+    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100)
+    : 0
 
-  const W = 200
-  const H = 50
-  const barW = Math.max(3, Math.floor((W - 2) / days.length) - 1)
-  const step = (W - 2) / Math.max(days.length - 1, 1)
+  const W = 320, H = 52
+  const padL = 0, padR = 0, padT = 4, padB = 16
+  const chartW = W - padL - padR
+  const chartH = H - padT - padB
+  const n = days.length
+  const xStep = chartW / (n - 1 || 1)
 
-  // Точки линии
-  const points = scores.map((s, i) => {
-    const x = days.length === 1 ? W / 2 : 1 + i * step
-    const y = H - 4 - s * (H - 12)
-    return { x, y, s }
-  })
-  const polylineStr = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  const areaPath = points.length > 1
-    ? `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)} ` +
-      points.slice(1).map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
-      ` L${points[points.length - 1].x.toFixed(1)},${H} L${points[0].x.toFixed(1)},${H} Z`
-    : ''
+  const xAt = i => padL + i * xStep
+  const yAt = v => padT + chartH - (v / 100) * chartH
 
-  const todayIdx = days.length - 1
-  const todayX = points[todayIdx]?.x ?? W - 1
-  const todayY = points[todayIdx]?.y ?? H / 2
+  const pcts = days.map(d => getDayScore(routines, d))
+  const validPcts = pcts.map((v, i) => v !== null ? { x: xAt(i), y: yAt((v ?? 0) * 100), v: (v ?? 0) * 100 } : null).filter(Boolean)
 
-  // Подписи оси X
-  const labels = []
-  labels.push({ x: 1, text: '1', today: false })
-  if (days.length >= 10) labels.push({ x: 1 + 9 * step, text: '10', today: false })
-  if (days.length >= 15) labels.push({ x: 1 + 14 * step, text: '15', today: false })
-  labels.push({ x: todayX, text: String(days.length), today: true })
+  const todayIdx = days.indexOf(today)
+  const todayX = todayIdx >= 0 ? xAt(todayIdx) : W - 1
+  const todayPt = validPcts.find((_, i) => days[pcts.indexOf(pcts[i], i)] === today) || validPcts[validPcts.length - 1]
+  const todayY = todayPt ? todayPt.y : H / 2
+
+  const gradId = `hbChartGrad${year}${month}`
 
   return (
-    <div className="routine-chart-card">
-      <div className="routine-chart-header">
-        <span>📈 Продуктивность за месяц</span>
-        <span className="routine-chart-avg">ср. {avgScore}%</span>
+    <div className="hb-card">
+      <div className="hb-card-header">
+        <span className="hb-card-title">📈 Продуктивность за месяц</span>
+        <span className="hb-card-badge">ср. {avgScore}%</span>
       </div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="routineAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5288c1" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#5288c1" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        {/* Bars */}
-        {days.map((d, i) => {
-          const x = 1 + i * step - barW / 2
-          const barH = Math.max(4, scores[i] * (H - 8))
-          return <rect key={d} x={x.toFixed(1)} y={(H - barH).toFixed(1)} width={barW} height={barH.toFixed(1)} rx="2" fill="#5288c1" opacity="0.12" />
-        })}
-        {/* Area */}
-        {areaPath && <path d={areaPath} fill="url(#routineAreaGrad)" />}
-        {/* Line */}
-        {points.length > 1 && (
-          <polyline points={polylineStr} fill="none" stroke="#5288c1" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-        )}
-        {/* Today marker */}
-        <line x1={todayX.toFixed(1)} y1="0" x2={todayX.toFixed(1)} y2={H} stroke="#5288c1" strokeWidth="0.8" strokeDasharray="3 2" />
-        <circle cx={todayX.toFixed(1)} cy={todayY.toFixed(1)} r="3.5" fill="white" stroke="#5288c1" strokeWidth="1.8" />
-        {/* X labels */}
-        {labels.map((l, i) => (
-          <text key={i} x={l.x.toFixed(1)} y={H - 1} fontSize="6" fill={l.today ? '#5288c1' : '#555'} fontFamily="sans-serif" fontWeight={l.today ? '600' : undefined}>
-            {l.text}
-          </text>
-        ))}
-      </svg>
-    </div>
-  )
-}
-
-// ── HabitRow ──────────────────────────────────────────────────────────────────
-function HabitRow({ habit, visibleDays, today, onTapName, onToggle }) {
-  return (
-    <div className="routine-habit-row">
-      <div className="routine-habit-name" onClick={onTapName}>
-        {habit.emoji} {habit.name}
-      </div>
-      <div className="routine-cells">
-        {visibleDays.map(dateStr => {
-          const done = isDone(habit, dateStr)
-          const isToday = dateStr === today
-          const scheduled = isScheduled(habit, dateStr)
-          return (
-            <div
-              key={dateStr}
-              className={`routine-cell${done ? ' done' : ''}${isToday && done ? ' today-done' : ''}${isToday && !done ? ' today-empty' : ''}${!scheduled ? ' off' : ''}`}
-              style={done ? { background: habit.color } : undefined}
-              onClick={() => scheduled && onToggle(dateStr)}
-            />
-          )
-        })}
+      <div className="hb-chart-wrap">
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#4FA3E0" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#4FA3E0" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
+          {/* Area */}
+          {validPcts.length >= 2 && (() => {
+            let area = `M${validPcts[0].x},${H - padB} `
+            validPcts.forEach(p => { area += `L${p.x},${p.y} ` })
+            area += `L${validPcts[validPcts.length - 1].x},${H - padB} Z`
+            return <path d={area} fill={`url(#${gradId})`} />
+          })()}
+          {/* Smooth Bezier line */}
+          {validPcts.length >= 2 && (() => {
+            let line = `M${validPcts[0].x},${validPcts[0].y}`
+            for (let i = 1; i < validPcts.length; i++) {
+              const prev = validPcts[i - 1], curr = validPcts[i]
+              const cpx = (prev.x + curr.x) / 2
+              line += ` C${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`
+            }
+            return <path d={line} fill="none" stroke="#4FA3E0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          })()}
+          {/* Dots */}
+          {validPcts.map((p, i) => {
+            const isT = days[i] === today
+            if (i === 0 || i === validPcts.length - 1 || isT) {
+              return isT
+                ? <circle key={i} cx={p.x} cy={p.y} r="4" fill="white" stroke="#4FA3E0" strokeWidth="2" />
+                : <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#4FA3E0" opacity="0.7" />
+            }
+            return null
+          })}
+          {/* Today vertical line */}
+          {todayIdx >= 0 && (
+            <line x1={todayX} y1={padT} x2={todayX} y2={H - padB}
+              stroke="#4FA3E0" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5" />
+          )}
+          {/* X labels */}
+          {[1, Math.ceil(n / 2), n].map(day => {
+            const i = day - 1
+            const x = xAt(i)
+            const isT = days[i] === today
+            return (
+              <text key={day} x={x} y={H - 1} textAnchor="middle" fontSize="8"
+                fill={isT ? '#4FA3E0' : '#C4C2BA'}
+                fontFamily="system-ui,sans-serif"
+                fontWeight={isT ? '700' : '400'}>
+                {day}
+              </text>
+            )
+          })}
+        </svg>
       </div>
     </div>
   )
@@ -218,77 +215,83 @@ function HabitAddForm({ onSave, onClose, nextOrder, initial }) {
   }
 
   return (
-    <div className="goal-modal-overlay" onClick={onClose}>
-      <div className="goal-modal-sheet" onClick={e => e.stopPropagation()}>
-        <div className="goal-modal-handle" />
-        <h3 className="goal-modal-title">{initial ? 'Редактировать' : 'Новая привычка'}</h3>
-
-        {/* Название */}
-        <div className="goal-form-row">
-          <span className="routine-form-emoji-preview">{emoji}</span>
-          <input
-            className="goal-form-input goal-form-name"
-            placeholder="Название привычки"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
+    <>
+      <div className="hb-backdrop" onClick={onClose} />
+      <div className="hb-sheet" onClick={e => e.stopPropagation()}>
+        <div className="hb-sheet-handle" />
+        <div className="hb-sh-head">
+          <div className="hb-sh-title">{initial ? 'Редактировать' : 'Новая привычка'}</div>
+          <div className="hb-sh-close" onClick={onClose}>✕</div>
         </div>
-
-        {/* Иконка */}
-        <div>
-          <div className="goal-form-label">Иконка</div>
-          <div className="routine-emoji-row">
-            {PRESET_EMOJIS.map(e => (
-              <div
-                key={e}
-                className={`routine-emoji-chip${emoji === e ? ' sel' : ''}`}
-                onClick={() => setEmoji(e)}
-              >
-                {e}
-              </div>
-            ))}
+        <div className="hb-form-body">
+          {/* Название */}
+          <div>
+            <div className="hb-fl">НАЗВАНИЕ</div>
+            <input
+              className="hb-fi"
+              placeholder="Например: Вода 2 литра"
+              maxLength={40}
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
           </div>
-        </div>
-
-        {/* Цвет */}
-        <div>
-          <div className="goal-form-label">Цвет</div>
-          <div className="routine-color-row">
-            {PRESET_COLORS.map(c => (
-              <div
-                key={c}
-                className={`routine-color-dot${color === c ? ' sel' : ''}`}
-                style={{ background: c }}
-                onClick={() => setColor(c)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Дни недели */}
-        <div>
-          <div className="goal-form-label">Дни недели</div>
-          <div className="routine-days-row">
-            {DAY_NAMES.map((name, i) => {
-              const d = i + 1
-              return (
+          {/* Иконка */}
+          <div>
+            <div className="hb-fl">ИКОНКА</div>
+            <div className="hb-emoji-row">
+              {PRESET_EMOJIS.map(e => (
                 <div
-                  key={d}
-                  className={`routine-day-chip${selectedDays.includes(d) ? ' sel' : ''}`}
-                  onClick={() => toggleDay(d)}
+                  key={e}
+                  className={`hb-emoji-chip${emoji === e ? ' sel' : ''}`}
+                  onClick={() => setEmoji(e)}
                 >
-                  {name}
+                  {e}
                 </div>
-              )
-            })}
+              ))}
+            </div>
+          </div>
+          {/* Цвет */}
+          <div>
+            <div className="hb-fl">ЦВЕТ</div>
+            <div className="hb-color-row">
+              {PRESET_COLORS.map(c => (
+                <div
+                  key={c}
+                  className={`hb-color-dot${color === c ? ' sel' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => setColor(c)}
+                />
+              ))}
+            </div>
+          </div>
+          {/* Дни недели */}
+          <div>
+            <div className="hb-fl">ДНИ НЕДЕЛИ</div>
+            <div className="hb-days-row">
+              {DAY_NAMES.map((n, i) => {
+                const d = i + 1
+                return (
+                  <div
+                    key={d}
+                    className={`hb-day-chip${selectedDays.includes(d) ? ' sel' : ''}`}
+                    onClick={() => toggleDay(d)}
+                  >
+                    {n}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
-
-        <button className="goal-btn goal-btn--primary" onClick={handleSave} disabled={!name.trim()}>
-          {initial ? 'Сохранить' : 'Добавить привычку'}
+        <button
+          className="hb-sheet-cta"
+          onClick={handleSave}
+          disabled={!name.trim()}
+        >
+          ✓ {initial ? 'Сохранить' : 'Добавить привычку'}
         </button>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -302,12 +305,16 @@ function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, viewMonth }) {
   const pct = getMonthPct(habit, year, month)
   const streak = getStreak(habit)
   const { done, missed } = getMonthStats(habit, year, month)
-  const monthNameGen = MONTH_NAMES_GEN[month]
+  const monthLabel = `${MONTH_NAMES_NOM[month].slice(0, 3)} ${year}`
+
+  const daysLabel = habit.days?.length === 7
+    ? 'Каждый день'
+    : (habit.days || []).map(d => DAY_NAMES[d - 1]).join(', ')
 
   if (editing) {
     return (
       <HabitAddForm
-        onSave={(updated) => { onUpdate(habit.id, updated); setEditing(false) }}
+        onSave={updated => { onUpdate(habit.id, updated); setEditing(false) }}
         onClose={() => setEditing(false)}
         nextOrder={habit.order}
         initial={habit}
@@ -315,106 +322,125 @@ function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, viewMonth }) {
     )
   }
 
-  // Барный SVG по дням месяца (только прошедшие)
+  // Bar chart SVG
   const pastDays = days.filter(d => d <= today)
-  const BAR_W = 200
-  const step = BAR_W / Math.max(pastDays.length, 1)
-  const bw = Math.max(3, step - 1.5)
+  const BAR_W = 280, BAR_H = 40
+  const n = days.length
+  const barW = Math.floor((BAR_W - (n - 1) * 2) / n)
 
   return (
-    <div className="goal-modal-overlay" onClick={onClose}>
-      <div className="goal-modal-sheet habit-detail-sheet" onClick={e => e.stopPropagation()}>
-        <div className="goal-modal-handle" />
+    <>
+      <div className="hb-backdrop" onClick={onClose} />
+      <div className="hb-sheet hb-detail-sheet" onClick={e => e.stopPropagation()}>
+        <div className="hb-sheet-handle" />
 
-        {/* Шапка */}
-        <div className="habit-detail-top">
-          <button className="habit-back-btn" onClick={onClose}>← Назад</button>
-          <span className="habit-detail-title">{habit.emoji} {habit.name}</span>
-          <button className="habit-edit-btn" onClick={() => setEditing(true)}>Ред.</button>
-        </div>
-
-        {/* Большой процент */}
-        <div className="habit-big-stat">
-          <div className="habit-big-pct" style={{ color: habit.color }}>{pct}%</div>
-          <div className="habit-big-sub">выполнение в {monthNameGen}</div>
-          <div className="habit-mini-stats">
-            <div className="habit-mini-stat">
-              <div className="habit-mini-val">🔥 {streak}</div>
-              <div className="habit-mini-key">серия</div>
+        {/* Hero */}
+        <div className="hb-detail-hero">
+          <div className="hb-dh-top">
+            <div className="hb-hero-icon" style={{ background: habit.color + '22' }}>
+              {habit.emoji}
             </div>
-            <div className="habit-mini-stat">
-              <div className="habit-mini-val">{done}</div>
-              <div className="habit-mini-key">выполнено</div>
-            </div>
-            <div className="habit-mini-stat">
-              <div className="habit-mini-val">{missed}</div>
-              <div className="habit-mini-key">пропущено</div>
+            <div>
+              <div className="hb-hero-name">{habit.name}</div>
+              <div className="hb-hero-sub">{daysLabel}</div>
             </div>
           </div>
-        </div>
-
-        {/* Барный SVG по дням */}
-        <div className="routine-chart-card">
-          <div className="routine-chart-header">
-            <span>Выполнение по дням</span>
-          </div>
-          <svg width="100%" viewBox={`0 0 ${BAR_W} 40`} xmlns="http://www.w3.org/2000/svg">
-            {pastDays.map((d, i) => {
-              const x = i * step
-              const scheduled = isScheduled(habit, d)
-              const done = isDone(habit, d)
-              return (
-                <rect
-                  key={d}
-                  x={x.toFixed(1)} y={done ? '4' : '16'}
-                  width={bw.toFixed(1)} height={done ? '34' : '20'}
-                  rx="2"
-                  fill={done ? habit.color : 'var(--tg-theme-secondary-bg-color, #2b2b2b)'}
-                  opacity={!scheduled ? 0.3 : 1}
-                />
-              )
-            })}
-            <text x="1" y="39" fontSize="6" fill="#555" fontFamily="sans-serif">1</text>
-            {pastDays.length >= 10 && (
-              <text x={(9 * step).toFixed(1)} y="39" fontSize="6" fill="#555" fontFamily="sans-serif">10</text>
-            )}
-            <text x={((pastDays.length - 1) * step).toFixed(1)} y="39" fontSize="6" fill={habit.color} fontFamily="sans-serif" fontWeight="600">
-              {pastDays.length}
-            </text>
-          </svg>
-        </div>
-
-        {/* Полная карта месяца */}
-        <div className="routine-chart-card">
-          <div className="routine-chart-header">
-            <span>Полная карта месяца</span>
-          </div>
-          <div className="habit-month-grid">
-            {days.map(d => {
-              const doneDay = isDone(habit, d)
-              const isToday = d === today
-              const future = d > today
-              return (
-                <div
-                  key={d}
-                  className={`habit-month-cell${isToday ? ' today' : ''}${future ? ' future' : ''}`}
-                  style={doneDay ? { background: habit.color, borderColor: 'transparent' } : undefined}
-                />
-              )
-            })}
+          <div className="hb-hero-stats">
+            <div className="hb-hs">
+              <div className="hb-hs-v">🔥 {streak}</div>
+              <div className="hb-hs-k">Серия</div>
+            </div>
+            <div className="hb-hs">
+              <div className="hb-hs-v">{done}</div>
+              <div className="hb-hs-k">Выполнено</div>
+            </div>
+            <div className="hb-hs">
+              <div className="hb-hs-v">{pct}%</div>
+              <div className="hb-hs-k">Процент</div>
+            </div>
+            <div className="hb-hs">
+              <div className="hb-hs-v">{pastDays.length}</div>
+              <div className="hb-hs-k">Дней всего</div>
+            </div>
           </div>
         </div>
 
-        {/* Удалить */}
-        <button
-          className="goal-btn"
-          style={{ background: 'rgba(220,53,69,0.15)', color: '#e53935' }}
-          onClick={() => { onDelete(habit.id); onClose() }}
-        >
-          Удалить привычку
-        </button>
+        {/* Bar chart */}
+        <div className="hb-detail-section">
+          <div className="hb-detail-card">
+            <div className="hb-detail-sec-title">
+              <span>График выполнения</span>
+              <span>{monthLabel}</span>
+            </div>
+            <svg width="100%" viewBox={`0 0 ${BAR_W} ${BAR_H}`} style={{ display: 'block', marginBottom: 4 }}>
+              {days.map((d, i) => {
+                const isFuture = d > today
+                const doneDay = isDone(habit, d)
+                const x = i * (barW + 2)
+                const bh = doneDay ? BAR_H - 4 : 8
+                const y = BAR_H - bh
+                const fill = doneDay ? habit.color : '#F0EEE8'
+                const stroke = doneDay ? 'none' : '#E8E6DE'
+                const isT = d === today
+                return (
+                  <g key={d}>
+                    <rect x={x} y={y} width={barW} height={bh} rx="2"
+                      fill={fill} stroke={stroke} strokeWidth="0.5"
+                      opacity={isFuture ? 0.3 : 1} />
+                    {isT && (
+                      <rect x={x} y="0" width={barW} height={BAR_H} rx="2"
+                        fill="none" stroke="#4FA3E0" strokeWidth="1.2" opacity="0.5" />
+                    )}
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
+        </div>
+
+        {/* Mini grid */}
+        <div className="hb-detail-section">
+          <div className="hb-detail-card">
+            <div className="hb-detail-sec-title">
+              <span>Карта месяца</span>
+              <span>{monthLabel}</span>
+            </div>
+            <div className="hb-mini-grid">
+              {days.map(d => {
+                const doneDay = isDone(habit, d)
+                const isT = d === today
+                const isFuture = d > today
+                const dayNum = parseInt(d.slice(8), 10)
+                return (
+                  <div
+                    key={d}
+                    className={`hb-mg-cell${doneDay ? ' done' : ''}${isT ? ' today-mg' : ''}`}
+                    style={{
+                      ...(doneDay ? { background: habit.color, borderColor: 'transparent' } : {}),
+                      ...(isFuture ? { opacity: 0.35 } : {}),
+                    }}
+                  >
+                    {!doneDay && (
+                      <span style={{ fontSize: 7, color: '#C4C2BA' }}>{dayNum}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="hb-detail-actions">
+          <button className="hb-detail-btn edit" onClick={() => setEditing(true)}>
+            Редактировать
+          </button>
+          <button className="hb-detail-btn danger" onClick={() => { onDelete(habit.id); onClose() }}>
+            Удалить
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -424,7 +450,8 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
   const [viewMonth, setViewMonth] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [showAddForm, setShowAddForm] = useState(false)
   const [selectedHabit, setSelectedHabit] = useState(null)
-  const cellsScrollRef = useRef(null)
+  const [poppingCell, setPoppingCell] = useState(null)
+  const popTimerRef = useRef(null)
 
   const today = now.toISOString().slice(0, 10)
   const { year, month } = viewMonth
@@ -441,30 +468,20 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
     month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
   )
 
-  // Все дни месяца в сетке
-  const allDays = getDaysInMonth(year, month)
-  const visibleDays = allDays
+  const visibleDays = getVisibleDays(year, month)
 
-  // Скролл к сегодняшней ячейке при монтировании и смене месяца
-  useEffect(() => {
-    const el = cellsScrollRef.current
-    if (!el) return
-    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
-    if (!isCurrentMonth) {
-      el.scrollLeft = 0
-      return
-    }
-    // Ширина ячейки (20px) + gap (2px) = 22px на ячейку
-    const CELL_W = 22
-    const todayIdx = now.getDate() - 1
-    // Центрируем сегодня в видимой области
-    const scrollTo = todayIdx * CELL_W - el.clientWidth / 2 + CELL_W / 2
-    el.scrollLeft = Math.max(0, scrollTo)
-  }, [year, month])
+  const handleToggle = (habitId, dateStr) => {
+    onToggleDay(habitId, dateStr)
+    const key = habitId + dateStr
+    setPoppingCell(key)
+    clearTimeout(popTimerRef.current)
+    popTimerRef.current = setTimeout(() => setPoppingCell(null), 250)
+  }
+
+  useEffect(() => () => clearTimeout(popTimerRef.current), [])
 
   // Статистики
   const maxStreak = routines.length ? Math.max(...routines.map(r => getStreak(r))) : 0
-  const record = maxStreak
   const monthPctAll = routines.length
     ? Math.round(routines.map(r => getMonthPct(r, year, month)).reduce((a, b) => a + b, 0) / routines.length)
     : 0
@@ -473,116 +490,119 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
   const todayTotal = todayScheduled.length
 
   return (
-    <div className="routine-wrapper">
+    <div className="hb-root">
       {/* Шапка */}
-      <div className="routine-header">
-        <div>
-          <div className="routine-month-name">{MONTH_NAMES_NOM[month]} {year}</div>
-          <div className="routine-month-sub">{currentDayOfMonth} из {daysInMonth} дня</div>
+      <div className="hb-header">
+        <div className="hb-header-row">
+          <div className="hb-month-nav">
+            <div className="hb-nav-arr" onClick={prevMonth}>‹</div>
+            <div>
+              <div className="hb-month-name">{MONTH_NAMES_NOM[month]} {year}</div>
+              <div className="hb-month-sub">{currentDayOfMonth} из {daysInMonth} дней</div>
+            </div>
+            <div className="hb-nav-arr" onClick={nextMonth}>›</div>
+          </div>
+          <div className="hb-header-actions">
+            <button className="hb-btn-add" onClick={() => setShowAddForm(true)}>+ Привычка</button>
+          </div>
         </div>
-        <div className="routine-header-actions">
-          <button className="routine-nav-btn" onClick={prevMonth}>‹</button>
-          <button className="routine-nav-btn" onClick={nextMonth}>›</button>
-          <button className="routine-add-btn" onClick={() => setShowAddForm(true)}>+ Привычка</button>
-        </div>
-      </div>
 
-      {/* Статистики */}
-      <div className="routine-stats">
-        <div className="routine-stat">
-          <div className="routine-stat-val">🔥 {maxStreak}</div>
-          <div className="routine-stat-key">Серия</div>
-        </div>
-        <div className="routine-stat">
-          <div className="routine-stat-val">{monthPctAll}%</div>
-          <div className="routine-stat-key">Месяц</div>
-        </div>
-        <div className="routine-stat">
-          <div className="routine-stat-val">{todayDone} / {todayTotal}</div>
-          <div className="routine-stat-key">Сегодня</div>
-        </div>
-        <div className="routine-stat">
-          <div className="routine-stat-val">🏆 {record}</div>
-          <div className="routine-stat-key">Рекорд</div>
+        {/* Статистики */}
+        <div className="hb-stats-row">
+          <div className="hb-stat-box">
+            <div className="hb-stat-v">🔥 {maxStreak}</div>
+            <div className="hb-stat-k">Серия</div>
+          </div>
+          <div className="hb-stat-box">
+            <div className="hb-stat-v">{monthPctAll}%</div>
+            <div className="hb-stat-k">Месяц</div>
+          </div>
+          <div className="hb-stat-box">
+            <div className="hb-stat-v">{todayDone}/{todayTotal}</div>
+            <div className="hb-stat-k">Сегодня</div>
+          </div>
+          <div className="hb-stat-box">
+            <div className="hb-stat-v">{routines.length}</div>
+            <div className="hb-stat-k">Привычек</div>
+          </div>
         </div>
       </div>
 
       {/* Скролл-область */}
-      <div className="routine-scroll">
+      <div className="hb-scroll">
         {/* График */}
         {routines.length > 0 && (
           <ProductivityChart routines={routines} year={year} month={month} />
         )}
 
         {/* Сетка привычек */}
-        <div className="routine-grid-card">
-          {/* Строка: фиксированная колонка имён + скролл-область ячеек */}
-          <div className="routine-grid-inner">
-            {/* Левая фиксированная колонка */}
-            <div className="routine-names-col">
-              {/* Пустая шапка над именами */}
-              {routines.length > 0 && <div className="routine-names-head" />}
-              {routines.map(habit => (
-                <div
-                  key={habit.id}
-                  className="routine-habit-name"
-                  onClick={() => setSelectedHabit(habit)}
-                >
-                  {habit.emoji} {habit.name}
-                </div>
-              ))}
-            </div>
-
-            {/* Правая скролл-область (числа + ячейки) */}
-            <div className="routine-cells-scroll" ref={cellsScrollRef}>
-              {/* Числа дней */}
-              {routines.length > 0 && (
-                <div className="routine-day-nums">
+        <div className="hb-grid-card">
+          {routines.length > 0 && (
+            <>
+              {/* Шапка: колонка имён + числа дней */}
+              <div className="hb-grid-header">
+                <div className="hb-grid-col-head">Привычка</div>
+                <div className="hb-day-nums">
                   {visibleDays.map(d => {
                     const dayNum = parseInt(d.slice(8), 10)
                     const isToday = d === today
                     return (
-                      <div key={d} className={`routine-day-num${isToday ? ' today' : ''}`}>
+                      <div key={d} className={`hb-dn${isToday ? ' today' : ''}`}>
                         {dayNum}
                       </div>
                     )
                   })}
                 </div>
-              )}
-              {/* Ряды ячеек */}
+              </div>
+
+              {/* Строки привычек */}
               {routines.map(habit => (
-                <div key={habit.id} className="routine-cells">
-                  {visibleDays.map(dateStr => {
-                    const done = isDone(habit, dateStr)
-                    const isToday = dateStr === today
-                    const scheduled = isScheduled(habit, dateStr)
-                    return (
-                      <div
-                        key={dateStr}
-                        className={`routine-cell${done ? ' done' : ''}${isToday && done ? ' today-done' : ''}${isToday && !done ? ' today-empty' : ''}${!scheduled ? ' off' : ''}`}
-                        style={{
-                          ...(done ? { background: habit.color } : {}),
-                          ...(isToday ? { outline: `2px solid ${habit.color}`, outlineOffset: '1.5px' } : {}),
-                        }}
-                        onClick={() => scheduled && onToggleDay(habit.id, dateStr)}
-                      />
-                    )
-                  })}
+                <div key={habit.id} className="hb-habit-row">
+                  <div className="hb-habit-name-wrap" onClick={() => setSelectedHabit(habit)}>
+                    <span className="hb-habit-emoji">{habit.emoji}</span>
+                    <span className="hb-habit-name">{habit.name}</span>
+                  </div>
+                  <div className="hb-habit-cells">
+                    {visibleDays.map(dateStr => {
+                      const done = isDone(habit, dateStr)
+                      const isToday = dateStr === today
+                      const scheduled = isScheduled(habit, dateStr)
+                      const isFuture = dateStr > today
+                      const isPopping = poppingCell === habit.id + dateStr
+                      let cls = 'hb-cell'
+                      if (done) cls += ' done'
+                      if (isToday) cls += ' today-ring'
+                      if (isFuture || !scheduled) cls += isFuture ? ' future' : ' off'
+                      if (isPopping) cls += ' popping'
+                      return (
+                        <div
+                          key={dateStr}
+                          className={cls}
+                          style={done ? { background: habit.color } : undefined}
+                          onClick={() => scheduled && !isFuture && handleToggle(habit.id, dateStr)}
+                        >
+                          <div className="hb-checkmark" />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               ))}
-            </div>
-          </div>
+            </>
+          )}
 
-          {/* Footer — всегда виден, вне скролла */}
-          <div className="routine-grid-footer">
-            <button className="routine-add-link" onClick={() => setShowAddForm(true)}>+ Привычка</button>
+          {/* Footer */}
+          <div className="hb-grid-footer">
+            <button className="hb-add-link" onClick={() => setShowAddForm(true)}>+ Привычка</button>
             {routines.length > 0 && (
-              <span className="routine-today-score">Сегодня: <b>{todayDone} / {todayTotal}</b></span>
+              <span className="hb-today-score">
+                Сегодня: <strong>{todayDone} / {todayTotal}</strong>
+              </span>
             )}
           </div>
 
           {routines.length === 0 && (
-            <p className="routine-empty-hint">Нажмите «+ Привычка» чтобы начать отслеживать рутину</p>
+            <p className="hb-empty">Нажмите «+ Привычка» чтобы начать отслеживать рутину</p>
           )}
         </div>
       </div>
