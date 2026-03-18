@@ -1098,8 +1098,10 @@ body {
   cursor: default;
 }
 .hb-cell.off {
-  opacity: 0.35;
+  background: transparent;
+  border-color: transparent;
   cursor: default;
+  pointer-events: none;
 }
 
 .hb-checkmark {

@@ -570,18 +570,24 @@ export default function RoutineBoard({ routines, onAdd, onUpdate, onDelete, onTo
                       const isFuture = dateStr > today
                       const isPopping = poppingCell === habit.id + dateStr
                       let cls = 'hb-cell'
-                      if (done) cls += ' done'
-                      if (isToday) cls += ' today-ring'
-                      if (isFuture || !scheduled) cls += isFuture ? ' future' : ' off'
-                      if (isPopping) cls += ' popping'
+                      if (!scheduled) cls += ' off'
+                      else if (isFuture) cls += ' future'
+                      else {
+                        if (done) cls += ' done'
+                        if (isToday) cls += ' today-ring'
+                        if (isPopping) cls += ' popping'
+                      }
+                      const style = {}
+                      if (scheduled && done) style.background = habit.color
+                      if (scheduled && isToday && !done) style.outlineColor = habit.color
                       return (
                         <div
                           key={dateStr}
                           className={cls}
-                          style={done ? { background: habit.color } : undefined}
+                          style={Object.keys(style).length ? style : undefined}
                           onClick={() => scheduled && !isFuture && handleToggle(habit.id, dateStr)}
                         >
-                          <div className="hb-checkmark" />
+                          {scheduled && <div className="hb-checkmark" />}
                         </div>
                       )
                     })}
