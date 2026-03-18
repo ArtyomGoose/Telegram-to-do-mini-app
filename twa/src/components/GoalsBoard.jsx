@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 // ── Сжатие фото до base64 ─────────────────────────────────────────────────────
 function compressImage(file, maxPx = 1200, quality = 0.85) {
@@ -20,18 +20,264 @@ function compressImage(file, maxPx = 1200, quality = 0.85) {
   })
 }
 
-// ── Форма добавления цели ─────────────────────────────────────────────────────
-function GoalAddForm({ onSave, onClose, nextOrder }) {
+// ── Helpers ───────────────────────────────────────────
+
+const EMOJIS = ['✨','🏠','✈️','🚗','💼','💪','📚','🧘','💰','🌴','🎯','❤️','🏋️','🎓','🌍','💎']
+
+const GRAD_COLORS = [
+  ['#D4A8A0','#C4887E'],
+  ['#A0B8D4','#7EA0C4'],
+  ['#A0D4B8','#7EC4A0'],
+  ['#C4A0D4','#B080C4'],
+  ['#D4CCA0','#C4BC80'],
+  ['#D4B4A0','#C49480'],
+]
+
+const HEIGHT_PATTERNS = [
+  ['h-tall','h-short'],
+  ['h-short','h-tall'],
+  ['h-med','h-med'],
+  ['h-tall','h-short'],
+  ['h-short','h-med'],
+]
+
+function tileHeightClass(index) {
+  const pi = Math.floor(index / 2) % HEIGHT_PATTERNS.length
+  return HEIGHT_PATTERNS[pi][index % 2]
+}
+
+function gradForIndex(i) {
+  const [a, b] = GRAD_COLORS[i % GRAD_COLORS.length]
+  return `linear-gradient(135deg, ${a} 0%, ${b} 100%)`
+}
+
+function formatDeadlineYear(deadline) {
+  if (!deadline) return null
+  return deadline.slice(0, 4)
+}
+
+function formatDeadlineFull(deadline) {
+  if (!deadline) return null
+  const [y, m, d] = deadline.split('-')
+  return `${d}.${m}.${y}`
+}
+
+// ── Swipe-down hook for sheets ─────────────────────────
+
+function useSwipeDown(ref, onClose) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let sy = 0
+    const onStart = (e) => { sy = e.touches[0].clientY }
+    const onEnd = (e) => {
+      const dy = e.changedTouches[0].clientY - sy
+      if (dy > 60 && el.scrollTop <= 0) onClose()
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchend', onEnd)
+    }
+  }, [onClose])
+}
+
+// ── GoalTile ──────────────────────────────────────────
+
+function GoalTile({ goal, index, view, onClick }) {
+  const heightClass = view === 'board' ? tileHeightClass(index) : 'h-list'
+  const hasPhoto = !!goal.imageBase64
+  const yearBadge = formatDeadlineYear(goal.deadline)
+
+  return (
+    <div
+      className={`gn-tile${goal.completed ? ' gn-tile--achieved' : ''}`}
+      onClick={onClick}
+    >
+      <div className={`gn-tile-photo ${heightClass}`}>
+        {hasPhoto ? (
+          <img src={goal.imageBase64} alt={goal.title} loading="lazy" />
+        ) : (
+          <div className="gn-tile-placeholder" style={{ background: gradForIndex(index) }}>
+            <div className="ph-emoji">{goal.emoji || '🎯'}</div>
+            <div className="ph-text">{goal.title}</div>
+          </div>
+        )}
+        <div className="gn-tile-overlay">
+          <div className="gn-tile-label">{goal.title}</div>
+        </div>
+        {yearBadge && <div className="gn-tile-year-badge">{yearBadge}</div>}
+        {goal.completed && <div className="gn-tile-achieved-badge">✓ Достигнуто</div>}
+      </div>
+
+      {view === 'list' && (
+        <div className="gn-tile-info">
+          <div className="gn-tile-info-name">{goal.title}</div>
+          <div className="gn-tile-info-meta">
+            <span className="gn-tile-info-tag">
+              {goal.emoji} {goal.deadline ? formatDeadlineFull(goal.deadline) : 'Мечта'}
+            </span>
+            <span style={{ fontSize: '11px', color: goal.completed ? 'var(--gn-mint)' : 'var(--gn-lav)' }}>
+              {goal.completed ? '✓ Достигнуто' : 'В процессе'}
+            </span>
+          </div>
+          <div className="gn-tile-info-status-bar">
+            <div className="gn-tile-info-status-track">
+              <div
+                className="gn-tile-info-status-fill"
+                style={{ width: goal.completed ? '100%' : '0%' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Detail Sheet ──────────────────────────────────────
+
+function DetailSheet({ goal, onClose, onUpdate, onDelete, showToast }) {
+  const sheetRef = useRef(null)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [description, setDescription] = useState(goal?.description || '')
+
+  useEffect(() => {
+    setDescription(goal?.description || '')
+    setEditingDesc(false)
+  }, [goal])
+
+  const handleClose = useCallback(() => onClose(), [onClose])
+  useSwipeDown(sheetRef, handleClose)
+
+  if (!goal) return null
+
+  const handleAchieve = () => {
+    const newCompleted = !goal.completed
+    onUpdate(goal.id, { completed: newCompleted })
+    showToast(newCompleted ? '🏆 Цель достигнута!' : '↩ Возвращено в работу')
+    onClose()
+  }
+
+  const handleDelete = () => {
+    onDelete(goal.id)
+    showToast('Цель удалена')
+    onClose()
+  }
+
+  const handleSaveDesc = () => {
+    onUpdate(goal.id, { description: description.trim() })
+    setEditingDesc(false)
+  }
+
+  const yearBadge = formatDeadlineYear(goal.deadline)
+
+  return (
+    <div
+      ref={sheetRef}
+      className={`gn-detail-sheet gn-detail-sheet--open`}
+    >
+      <div className="gn-sheet-handle" />
+      <div className="gn-sheet-photo-wrap">
+        {goal.imageBase64 ? (
+          <img src={goal.imageBase64} alt={goal.title} />
+        ) : (
+          <div className="gn-sheet-photo-placeholder">
+            <span>{goal.emoji || '✨'}</span>
+            <p>Нет фото</p>
+          </div>
+        )}
+      </div>
+      <div className="gn-sheet-body">
+        <div className="gn-sheet-name">{goal.title}</div>
+        <div className="gn-sheet-meta">
+          {yearBadge && (
+            <span className="gn-sheet-badge gn-sheet-badge--year">
+              {goal.emoji} {goal.deadline ? formatDeadlineFull(goal.deadline) : 'Мечта'}
+            </span>
+          )}
+          <span className={`gn-sheet-badge ${goal.completed ? 'gn-sheet-badge--achieved' : 'gn-sheet-badge--active'}`}>
+            {goal.completed ? '✓ Достигнуто' : 'В процессе'}
+          </span>
+        </div>
+
+        {editingDesc ? (
+          <>
+            <textarea
+              className="gn-sheet-desc-textarea"
+              value={description}
+              rows={4}
+              autoFocus
+              onChange={e => setDescription(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <button
+                className="gn-sheet-btn gn-sheet-btn--secondary"
+                style={{ flex: 1 }}
+                onClick={() => { setDescription(goal.description || ''); setEditingDesc(false) }}
+              >
+                Отмена
+              </button>
+              <button
+                className="gn-sheet-btn gn-sheet-btn--primary"
+                style={{ flex: 1 }}
+                onClick={handleSaveDesc}
+              >
+                Сохранить
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="gn-sheet-desc" onClick={() => setEditingDesc(true)}>
+            {description
+              ? description
+              : <span className="gn-sheet-desc-placeholder">Нажмите, чтобы добавить описание...</span>
+            }
+          </div>
+        )}
+
+        <div className="gn-sheet-actions">
+          <button
+            className={`gn-sheet-btn ${goal.completed ? 'gn-sheet-btn--done' : 'gn-sheet-btn--primary'}`}
+            onClick={handleAchieve}
+          >
+            {goal.completed ? '↩ Вернуть в работу' : '🏆 Достигнуто!'}
+          </button>
+          <button
+            className="gn-sheet-btn gn-sheet-btn--danger"
+            style={{ flex: '0 0 52px' }}
+            onClick={handleDelete}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Add Sheet ─────────────────────────────────────────
+
+function AddSheet({ onSave, onClose, nextOrder, showToast }) {
+  const sheetRef = useRef(null)
   const [title, setTitle] = useState('')
-  const [emoji, setEmoji] = useState('')
+  const [emoji, setEmoji] = useState('✨')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
   const [imageBase64, setImageBase64] = useState(null)
   const [imageLoading, setImageLoading] = useState(false)
 
+  const handleClose = useCallback(() => onClose(), [onClose])
+  useSwipeDown(sheetRef, handleClose)
+
   const handleImage = async (e) => {
     const file = e.target.files[0]
     if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Файл слишком большой (макс. 10 МБ)')
+      return
+    }
     setImageLoading(true)
     const b64 = await compressImage(file)
     setImageBase64(b64)
@@ -44,7 +290,7 @@ function GoalAddForm({ onSave, onClose, nextOrder }) {
     onSave({
       id,
       title: title.trim(),
-      emoji: emoji.trim(),
+      emoji,
       description: description.trim(),
       deadline: deadline || null,
       imageBase64: imageBase64 || null,
@@ -53,273 +299,278 @@ function GoalAddForm({ onSave, onClose, nextOrder }) {
       size: 'small',
       createdAt: new Date().toISOString().slice(0, 10),
     })
+    showToast('✨ Цель добавлена!')
     onClose()
   }
 
   return (
-    <div className="goal-modal-overlay" onClick={onClose}>
-      <div className="goal-modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="goal-modal-handle" />
-        <h3 className="goal-modal-title">Новая цель</h3>
+    <div ref={sheetRef} className="gn-add-sheet gn-add-sheet--open">
+      <div className="gn-add-header">
+        <div className="gn-add-title">Новая цель</div>
+        <div className="gn-add-close" onClick={onClose}>✕</div>
+      </div>
 
-        <div className="goal-form-row">
+      <div className="gn-add-form">
+        {/* Photo */}
+        <div className="gn-form-group">
+          <div className="gn-form-label">ФОТО ЦЕЛИ</div>
+          <label
+            className={`gn-photo-upload${imageBase64 ? ' gn-photo-upload--has-photo' : ''}`}
+          >
+            {imageBase64 ? (
+              <>
+                <img src={imageBase64} className="gn-photo-upload__img" alt="preview" />
+                <div className="gn-pu-change">Изменить фото</div>
+              </>
+            ) : (
+              <div className="gn-photo-upload__placeholder">
+                <div className="gn-pu-icon">🖼</div>
+                <div className="gn-pu-text">
+                  {imageLoading ? 'Загрузка...' : 'Нажмите чтобы выбрать фото'}
+                </div>
+                <div className="gn-pu-sub">JPEG, PNG — до 10 МБ</div>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleImage}
+            />
+          </label>
+        </div>
+
+        {/* Name */}
+        <div className="gn-form-group">
+          <div className="gn-form-label">НАЗВАНИЕ ЦЕЛИ</div>
           <input
-            className="goal-form-input goal-form-emoji"
-            placeholder="😊"
-            value={emoji}
-            maxLength={2}
-            onChange={(e) => setEmoji(e.target.value)}
-          />
-          <input
-            className="goal-form-input goal-form-name"
-            placeholder="Название цели"
+            type="text"
+            className="gn-form-input"
+            placeholder="Например: Дом у моря"
+            maxLength={60}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={e => setTitle(e.target.value)}
           />
         </div>
 
-        <textarea
-          className="goal-form-textarea"
-          placeholder="Описание / заметка"
-          value={description}
-          rows={3}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        {/* Description */}
+        <div className="gn-form-group">
+          <div className="gn-form-label">ОПИСАНИЕ (необязательно)</div>
+          <textarea
+            className="gn-form-textarea"
+            placeholder="Почему эта цель важна для тебя..."
+            rows={3}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+          />
+        </div>
 
-        <div className="goal-form-row">
-          <label className="goal-form-label">Дедлайн:</label>
+        {/* Emoji */}
+        <div className="gn-form-group">
+          <div className="gn-form-label">ИКОНКА</div>
+          <div className="gn-emoji-grid">
+            {EMOJIS.map(e => (
+              <div
+                key={e}
+                className={`gn-emoji-chip${emoji === e ? ' gn-emoji-chip--sel' : ''}`}
+                onClick={() => setEmoji(e)}
+              >
+                {e}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Deadline */}
+        <div className="gn-form-group">
+          <div className="gn-form-label">СРОК (необязательно)</div>
           <input
             type="date"
-            className="goal-form-input goal-form-date"
+            className="gn-form-input gn-form-date"
             max="9999-12-31"
             value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
+            onChange={e => setDeadline(e.target.value)}
           />
         </div>
-
-        <label className="goal-photo-label">
-          {imageLoading ? 'Загрузка...' : imageBase64 ? '✓ Фото загружено' : '📷 Добавить фото'}
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handleImage}
-          />
-        </label>
-        {imageBase64 && (
-          <img src={imageBase64} className="goal-form-preview" alt="preview" />
-        )}
-
-        <div className="goal-form-actions">
-          <button className="goal-btn goal-btn--secondary" onClick={onClose}>Отмена</button>
-          <button className="goal-btn goal-btn--primary" onClick={handleSave} disabled={!title.trim()}>
-            Добавить
-          </button>
-        </div>
       </div>
+
+      <button
+        className="gn-add-cta"
+        disabled={!title.trim()}
+        onClick={handleSave}
+      >
+        ✨ Добавить цель
+      </button>
     </div>
   )
 }
 
-// ── Модал деталей цели ────────────────────────────────────────────────────────
-function GoalDetailModal({ goal, onClose, onUpdate }) {
-  const [editing, setEditing] = useState(false)
-  const [description, setDescription] = useState(goal.description || '')
+// ── Main GoalsBoard ───────────────────────────────────
 
-  const handleComplete = () => {
-    onUpdate(goal.id, { completed: !goal.completed })
-    onClose()
-  }
-
-  const handleSaveDesc = () => {
-    onUpdate(goal.id, { description })
-    setEditing(false)
-  }
-
-  const formatDeadline = (d) => {
-    if (!d) return null
-    const [year, month, day] = d.split('-')
-    return `${day}.${month}.${year}`
-  }
-
-  return (
-    <div className="goal-modal-overlay" onClick={onClose}>
-      <div className="goal-modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="goal-modal-handle" />
-
-        {goal.imageBase64 && (
-          <img src={goal.imageBase64} className="goal-detail-image" alt={goal.title} />
-        )}
-
-        <div className="goal-detail-header">
-          {goal.emoji && <span className="goal-detail-emoji">{goal.emoji}</span>}
-          <h3 className="goal-detail-title">{goal.title}</h3>
-        </div>
-
-        {goal.deadline && (
-          <p className="goal-detail-deadline">📅 {formatDeadline(goal.deadline)}</p>
-        )}
-
-        {editing ? (
-          <div>
-            <textarea
-              className="goal-form-textarea"
-              value={description}
-              rows={4}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-            <div className="goal-form-actions">
-              <button className="goal-btn goal-btn--secondary" onClick={() => setEditing(false)}>Отмена</button>
-              <button className="goal-btn goal-btn--primary" onClick={handleSaveDesc}>Сохранить</button>
-            </div>
-          </div>
-        ) : (
-          <p
-            className="goal-detail-description"
-            onClick={() => setEditing(true)}
-          >
-            {description || <span className="goal-detail-placeholder">Нажмите, чтобы добавить описание...</span>}
-          </p>
-        )}
-
-        <button
-          className={`goal-btn goal-btn--complete ${goal.completed ? 'goal-btn--completed' : ''}`}
-          onClick={handleComplete}
-        >
-          {goal.completed ? '✓ Выполнено' : 'Отметить выполненной'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Ячейка цели ───────────────────────────────────────────────────────────────
-function GoalCell({ goal, editMode, onTap, onDelete, onResize, onDragStart, onDragOver, onDrop }) {
-  return (
-    <div
-      className={`goal-cell ${goal.size === 'large' ? 'goal-cell--large' : ''} ${goal.completed ? 'goal-cell--completed' : ''}`}
-      draggable={editMode}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onClick={onTap}
-    >
-      {goal.imageBase64
-        ? <img src={goal.imageBase64} className="goal-cell-img" alt={goal.title} />
-        : <div className="goal-cell-placeholder">{goal.emoji || '🎯'}</div>
-      }
-      <div className="goal-cell-label">
-        {goal.emoji && <span className="goal-cell-label-emoji">{goal.emoji}</span>}
-        <span>{goal.title}</span>
-      </div>
-      {goal.completed && <div className="goal-cell-done-badge">✓</div>}
-
-      {editMode && (
-        <div className="goal-cell-edit-controls" onClick={(e) => e.stopPropagation()}>
-          <button className="goal-cell-btn goal-cell-btn--resize" onClick={onResize} title="Размер">
-            {goal.size === 'large' ? '⊟' : '⊞'}
-          </button>
-          <button className="goal-cell-btn goal-cell-btn--delete" onClick={onDelete} title="Удалить">
-            ✕
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Основной компонент Vision Board ──────────────────────────────────────────
 export default function GoalsBoard({ goals, onAdd, onUpdate, onDelete, onReorder }) {
-  const [editMode, setEditMode] = useState(false)
+  const [view, setView] = useState('board')
   const [selectedGoal, setSelectedGoal] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [dragId, setDragId] = useState(null)
+  const [toastMsg, setToastMsg] = useState('')
+  const [toastShow, setToastShow] = useState(false)
+  const toastTimer = useRef(null)
+  const backdropRef = useRef(null)
 
-  const completedCount = goals.filter((g) => g.completed).length
-  const progressPct = goals.length ? (completedCount / goals.length) * 100 : 0
+  const showToast = useCallback((msg) => {
+    setToastMsg(msg)
+    setToastShow(true)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToastShow(false), 2200)
+  }, [])
 
-  const handleDrop = (targetId) => {
-    if (!dragId || dragId === targetId) return
-    const fromIdx = goals.findIndex((g) => g.id === dragId)
-    const toIdx = goals.findIndex((g) => g.id === targetId)
-    if (fromIdx === -1 || toIdx === -1) return
-    const reordered = [...goals]
-    const [moved] = reordered.splice(fromIdx, 1)
-    reordered.splice(toIdx, 0, moved)
-    onReorder(reordered.map((g, i) => ({ id: g.id, order: i })))
-    setDragId(null)
-  }
+  const total = goals.length
+  const achieved = goals.filter(g => g.completed).length
+  const currentYear = String(new Date().getFullYear())
+  const thisYear = goals.filter(g => g.deadline && g.deadline.startsWith(currentYear)).length
+
+  const closeAll = useCallback(() => {
+    setSelectedGoal(null)
+    setShowAddForm(false)
+  }, [])
+
+  const anySheetOpen = !!selectedGoal || showAddForm
 
   return (
-    <div className="goals-wrapper">
-      {/* Шапка */}
-      <div className="goals-header">
-        <span className="goals-title">Vision Board</span>
+    <div className="goals-new-root">
+      {/* Header */}
+      <div className="gn-header">
+        <div className="gn-header-left">
+          <div className="gn-header-title">Карта желаний</div>
+          <div className="gn-header-sub">
+            {total} {total === 1 ? 'цель' : total >= 2 && total <= 4 ? 'цели' : 'целей'} · {achieved} достигнуто
+          </div>
+        </div>
+        <div className="gn-header-right">
+          <div
+            className="gn-btn-icon"
+            onClick={() => showToast('✏️ Режим редактирования — скоро')}
+          >
+            ✏️
+          </div>
+          <button
+            className="gn-btn-add"
+            onClick={() => setShowAddForm(true)}
+          >
+            + Цель
+          </button>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div className="gn-stats-strip">
+        <div className="gn-stat-pill">
+          <div className="gn-stat-val">{total}</div>
+          <div className="gn-stat-key">Целей</div>
+        </div>
+        <div className="gn-stat-pill">
+          <div className="gn-stat-val gn-stat-val--mint">{achieved}</div>
+          <div className="gn-stat-key">Достигнуто</div>
+        </div>
+        <div className="gn-stat-pill">
+          <div className="gn-stat-val">{thisYear}</div>
+          <div className="gn-stat-key">В этом году</div>
+        </div>
+        <div className="gn-stat-pill">
+          <div className="gn-stat-val gn-stat-val--lav">
+            {total > 0 ? Math.round((achieved / total) * 100) : 0}%
+          </div>
+          <div className="gn-stat-key">Прогресс</div>
+        </div>
+      </div>
+
+      {/* View toggle */}
+      <div className="gn-view-toggle">
         <button
-          className={`goals-edit-btn ${editMode ? 'goals-edit-btn--active' : ''}`}
-          onClick={() => setEditMode(!editMode)}
+          className={`gn-vt-btn${view === 'board' ? ' gn-vt-btn--active' : ''}`}
+          onClick={() => setView('board')}
         >
-          {editMode ? 'Готово' : 'Ред.'}
+          ⊞ Доска
+        </button>
+        <button
+          className={`gn-vt-btn${view === 'list' ? ' gn-vt-btn--active' : ''}`}
+          onClick={() => setView('list')}
+        >
+          ☰ Список
         </button>
       </div>
 
-      {/* Сетка */}
-      <div className="goals-scroll">
-        <div className="goals-grid">
-          {goals.map((goal) => (
-            <GoalCell
-              key={goal.id}
-              goal={goal}
-              editMode={editMode}
-              onTap={() => { if (!editMode) setSelectedGoal(goal) }}
-              onDelete={() => onDelete(goal.id)}
-              onResize={() => onUpdate(goal.id, { size: goal.size === 'large' ? 'small' : 'large' })}
-              onDragStart={() => setDragId(goal.id)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(goal.id)}
-            />
-          ))}
-          {/* Ячейка добавления */}
-          <div className="goal-cell goal-cell--add" onClick={() => !editMode && setShowAddForm(true)}>
-            <span className="goal-cell-add-icon">+</span>
+      {/* Board / List */}
+      <div className="gn-board-wrap">
+        {goals.length === 0 ? (
+          <div className="gn-empty-board">
+            <div className="gn-empty-icon">✨</div>
+            <div className="gn-empty-title">Карта желаний пуста</div>
+            <div className="gn-empty-sub">
+              Добавьте первую цель — фото, название и срок. Визуализация мечты работает!
+            </div>
+            <button className="gn-empty-btn" onClick={() => setShowAddForm(true)}>
+              + Добавить первую цель
+            </button>
           </div>
-        </div>
+        ) : view === 'board' ? (
+          <div className="gn-masonry">
+            {goals.map((goal, i) => (
+              <GoalTile
+                key={goal.id}
+                goal={goal}
+                index={i}
+                view="board"
+                onClick={() => setSelectedGoal(goal)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="gn-list-view">
+            {goals.map((goal, i) => (
+              <GoalTile
+                key={goal.id}
+                goal={goal}
+                index={i}
+                view="list"
+                onClick={() => setSelectedGoal(goal)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Футер с прогрессом */}
-      <div className="goals-footer">
-        <span className="goals-footer-text">Целей: {goals.length}</span>
-        <div className="goals-progress-track">
-          <div className="goals-progress-fill" style={{ width: `${progressPct}%` }} />
-        </div>
-        <span className="goals-footer-text">Выполнено: {completedCount}</span>
-      </div>
+      {/* Backdrop */}
+      <div
+        className={`gn-backdrop${anySheetOpen ? ' gn-backdrop--visible' : ''}`}
+        onClick={closeAll}
+      />
 
-      {/* Подсказка */}
-      {goals.length === 0 && !editMode && (
-        <p className="goals-hint">Нажмите «+» чтобы добавить первую цель</p>
-      )}
-
-      {/* Модал деталей */}
+      {/* Detail sheet */}
       {selectedGoal && (
-        <GoalDetailModal
+        <DetailSheet
           goal={selectedGoal}
           onClose={() => setSelectedGoal(null)}
           onUpdate={(id, changes) => {
             onUpdate(id, changes)
-            setSelectedGoal((prev) => ({ ...prev, ...changes }))
+            setSelectedGoal(prev => prev ? { ...prev, ...changes } : null)
           }}
+          onDelete={onDelete}
+          showToast={showToast}
         />
       )}
 
-      {/* Форма добавления */}
+      {/* Add sheet */}
       {showAddForm && (
-        <GoalAddForm
+        <AddSheet
           onSave={onAdd}
           onClose={() => setShowAddForm(false)}
           nextOrder={goals.length}
+          showToast={showToast}
         />
       )}
+
+      {/* Toast */}
+      <div className={`gn-toast${toastShow ? ' show' : ''}`}>{toastMsg}</div>
     </div>
   )
 }
