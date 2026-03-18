@@ -2412,6 +2412,30 @@ body {
   box-shadow: 0 0 0 3px rgba(196,160,212,0.15);
 }
 
+/* Progress section in detail sheet */
+.gn-sheet-progress-label {
+  font-size: 11px;
+  color: var(--gn-muted);
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.gn-sheet-progress-track {
+  height: 6px;
+  background: var(--gn-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.gn-sheet-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--gn-lav);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 .gn-sheet-actions {
   display: flex;
   gap: 8px;
@@ -2616,6 +2640,40 @@ body {
 }
 
 .gn-emoji-chip:active { transform: scale(0.93); }
+
+/* Year chips */
+.gn-year-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.gn-year-chip {
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: var(--gn-white);
+  border: 0.5px solid var(--gn-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gn-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: inherit;
+}
+
+.gn-year-chip--sel {
+  background: var(--gn-char);
+  color: var(--gn-white);
+  border-color: var(--gn-char);
+}
+
+/* Progress slider */
+.gn-progress-slider { width: 100%; accent-color: var(--gn-lav); cursor: pointer; }
+.gn-progress-label-row {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 11px;
+  color: var(--gn-muted);
+  margin-top: 4px;
+}
 
 /* CTA button */
 .gn-add-cta {

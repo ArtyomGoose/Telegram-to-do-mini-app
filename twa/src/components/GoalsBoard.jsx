@@ -119,14 +119,14 @@ function GoalTile({ goal, index, view, onClick }) {
               {goal.emoji} {goal.deadline ? formatDeadlineFull(goal.deadline) : 'Мечта'}
             </span>
             <span style={{ fontSize: '11px', color: goal.completed ? 'var(--gn-mint)' : 'var(--gn-lav)' }}>
-              {goal.completed ? '✓ Достигнуто' : 'В процессе'}
+              {goal.completed ? '✓ Достигнуто' : `${goal.progress ?? 0}%`}
             </span>
           </div>
           <div className="gn-tile-info-status-bar">
             <div className="gn-tile-info-status-track">
               <div
                 className="gn-tile-info-status-fill"
-                style={{ width: goal.completed ? '100%' : '0%' }}
+                style={{ width: `${goal.completed ? 100 : (goal.progress ?? 0)}%` }}
               />
             </div>
           </div>
@@ -138,7 +138,7 @@ function GoalTile({ goal, index, view, onClick }) {
 
 // ── Detail Sheet ──────────────────────────────────────
 
-function DetailSheet({ goal, onClose, onUpdate, onDelete, showToast }) {
+function DetailSheet({ goal, onClose, onUpdate, onDelete, showToast, onEdit }) {
   const sheetRef = useRef(null)
   const [editingDesc, setEditingDesc] = useState(false)
   const [description, setDescription] = useState(goal?.description || '')
@@ -237,12 +237,34 @@ function DetailSheet({ goal, onClose, onUpdate, onDelete, showToast }) {
           </div>
         )}
 
+        {(() => {
+          const pct = goal.completed ? 100 : (goal.progress ?? 0)
+          return (
+            <>
+              <div className="gn-sheet-progress-label">
+                <span>Прогресс</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="gn-sheet-progress-track">
+                <div className="gn-sheet-progress-fill" style={{ width: `${pct}%` }} />
+              </div>
+            </>
+          )
+        })()}
+
         <div className="gn-sheet-actions">
           <button
             className={`gn-sheet-btn ${goal.completed ? 'gn-sheet-btn--done' : 'gn-sheet-btn--primary'}`}
             onClick={handleAchieve}
           >
             {goal.completed ? '↩ Вернуть в работу' : '🏆 Достигнуто!'}
+          </button>
+          <button
+            className="gn-sheet-btn gn-sheet-btn--secondary"
+            style={{ flex: '0 0 90px' }}
+            onClick={() => { onClose(); onEdit(goal) }}
+          >
+            Изменить
           </button>
           <button
             className="gn-sheet-btn gn-sheet-btn--danger"
@@ -259,14 +281,29 @@ function DetailSheet({ goal, onClose, onUpdate, onDelete, showToast }) {
 
 // ── Add Sheet ─────────────────────────────────────────
 
-function AddSheet({ onSave, onClose, nextOrder, showToast }) {
+function AddSheet({ onSave, onClose, nextOrder, showToast, editGoal }) {
   const sheetRef = useRef(null)
-  const [title, setTitle] = useState('')
-  const [emoji, setEmoji] = useState('✨')
-  const [description, setDescription] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [imageBase64, setImageBase64] = useState(null)
+
+  const currentYear = new Date().getFullYear()
+  const YEAR_CHIPS = [String(currentYear), String(currentYear + 1), String(currentYear + 2), 'Мечта']
+
+  function deadlineToYearChip(deadline) {
+    if (!deadline) return 'Мечта'
+    const year = deadline.slice(0, 4)
+    return YEAR_CHIPS.includes(year) ? year : 'Мечта'
+  }
+
+  function yearChipToDeadline(chip) {
+    return chip === 'Мечта' ? null : `${chip}-12-31`
+  }
+
+  const [title, setTitle] = useState(editGoal?.title || '')
+  const [emoji, setEmoji] = useState(editGoal?.emoji || '✨')
+  const [description, setDescription] = useState(editGoal?.description || '')
+  const [imageBase64, setImageBase64] = useState(editGoal?.imageBase64 || null)
   const [imageLoading, setImageLoading] = useState(false)
+  const [selectedYear, setSelectedYear] = useState(editGoal ? deadlineToYearChip(editGoal.deadline) : String(currentYear))
+  const [progress, setProgress] = useState(editGoal?.progress ?? 0)
 
   const handleClose = useCallback(() => onClose(), [onClose])
   useSwipeDown(sheetRef, handleClose)
@@ -286,27 +323,43 @@ function AddSheet({ onSave, onClose, nextOrder, showToast }) {
 
   const handleSave = () => {
     if (!title.trim()) return
-    const id = Date.now().toString()
-    onSave({
-      id,
-      title: title.trim(),
-      emoji,
-      description: description.trim(),
-      deadline: deadline || null,
-      imageBase64: imageBase64 || null,
-      completed: false,
-      order: nextOrder,
-      size: 'small',
-      createdAt: new Date().toISOString().slice(0, 10),
-    })
-    showToast('✨ Цель добавлена!')
+    const deadlineValue = yearChipToDeadline(selectedYear)
+    const isCompleted = progress === 100
+
+    if (editGoal) {
+      onSave(editGoal.id, {
+        title: title.trim(),
+        emoji,
+        description: description.trim(),
+        deadline: deadlineValue,
+        imageBase64: imageBase64 || null,
+        completed: isCompleted,
+        progress,
+      })
+      showToast('✓ Цель обновлена')
+    } else {
+      onSave({
+        id: Date.now().toString(),
+        title: title.trim(),
+        emoji,
+        description: description.trim(),
+        deadline: deadlineValue,
+        imageBase64: imageBase64 || null,
+        completed: isCompleted,
+        progress,
+        order: nextOrder,
+        size: 'small',
+        createdAt: new Date().toISOString().slice(0, 10),
+      })
+      showToast('✨ Цель добавлена!')
+    }
     onClose()
   }
 
   return (
     <div ref={sheetRef} className="gn-add-sheet gn-add-sheet--open">
       <div className="gn-add-header">
-        <div className="gn-add-title">Новая цель</div>
+        <div className="gn-add-title">{editGoal ? 'Изменить цель' : 'Новая цель'}</div>
         <div className="gn-add-close" onClick={onClose}>✕</div>
       </div>
 
@@ -381,16 +434,34 @@ function AddSheet({ onSave, onClose, nextOrder, showToast }) {
           </div>
         </div>
 
-        {/* Deadline */}
+        {/* Year chips */}
         <div className="gn-form-group">
-          <div className="gn-form-label">СРОК (необязательно)</div>
+          <div className="gn-form-label">СРОК</div>
+          <div className="gn-year-chips">
+            {YEAR_CHIPS.map(chip => (
+              <div
+                key={chip}
+                className={`gn-year-chip${selectedYear === chip ? ' gn-year-chip--sel' : ''}`}
+                onClick={() => setSelectedYear(chip)}
+              >
+                {chip}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Progress slider */}
+        <div className="gn-form-group">
+          <div className="gn-form-label">НАЧАЛЬНЫЙ ПРОГРЕСС</div>
           <input
-            type="date"
-            className="gn-form-input gn-form-date"
-            max="9999-12-31"
-            value={deadline}
-            onChange={e => setDeadline(e.target.value)}
+            type="range"
+            className="gn-progress-slider"
+            min="0"
+            max="100"
+            value={progress}
+            onChange={e => setProgress(Number(e.target.value))}
           />
+          <div className="gn-progress-label-row">{progress}%</div>
         </div>
       </div>
 
@@ -399,7 +470,7 @@ function AddSheet({ onSave, onClose, nextOrder, showToast }) {
         disabled={!title.trim()}
         onClick={handleSave}
       >
-        ✨ Добавить цель
+        {editGoal ? '✓ Сохранить изменения' : '✨ Добавить цель'}
       </button>
     </div>
   )
@@ -411,6 +482,7 @@ export default function GoalsBoard({ goals, onAdd, onUpdate, onDelete, onReorder
   const [view, setView] = useState('board')
   const [selectedGoal, setSelectedGoal] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editGoal, setEditGoal] = useState(null)
   const [toastMsg, setToastMsg] = useState('')
   const [toastShow, setToastShow] = useState(false)
   const toastTimer = useRef(null)
@@ -431,6 +503,13 @@ export default function GoalsBoard({ goals, onAdd, onUpdate, onDelete, onReorder
   const closeAll = useCallback(() => {
     setSelectedGoal(null)
     setShowAddForm(false)
+    setEditGoal(null)
+  }, [])
+
+  const handleEdit = useCallback((goal) => {
+    setEditGoal(goal)
+    setShowAddForm(true)
+    setSelectedGoal(null)
   }, [])
 
   const anySheetOpen = !!selectedGoal || showAddForm
@@ -454,7 +533,7 @@ export default function GoalsBoard({ goals, onAdd, onUpdate, onDelete, onReorder
           </div>
           <button
             className="gn-btn-add"
-            onClick={() => setShowAddForm(true)}
+            onClick={() => { setEditGoal(null); setShowAddForm(true) }}
           >
             + Цель
           </button>
@@ -508,7 +587,7 @@ export default function GoalsBoard({ goals, onAdd, onUpdate, onDelete, onReorder
             <div className="gn-empty-sub">
               Добавьте первую цель — фото, название и срок. Визуализация мечты работает!
             </div>
-            <button className="gn-empty-btn" onClick={() => setShowAddForm(true)}>
+            <button className="gn-empty-btn" onClick={() => { setEditGoal(null); setShowAddForm(true) }}>
               + Добавить первую цель
             </button>
           </div>
@@ -556,16 +635,21 @@ export default function GoalsBoard({ goals, onAdd, onUpdate, onDelete, onReorder
           }}
           onDelete={onDelete}
           showToast={showToast}
+          onEdit={handleEdit}
         />
       )}
 
       {/* Add sheet */}
       {showAddForm && (
         <AddSheet
-          onSave={onAdd}
-          onClose={() => setShowAddForm(false)}
+          onSave={editGoal
+            ? (id, changes) => onUpdate(id, changes)
+            : onAdd
+          }
+          onClose={() => { setShowAddForm(false); setEditGoal(null) }}
           nextOrder={goals.length}
           showToast={showToast}
+          editGoal={editGoal}
         />
       )}
 
