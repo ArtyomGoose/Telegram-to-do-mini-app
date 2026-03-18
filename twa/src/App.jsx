@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './App.css'
 import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
@@ -20,10 +20,9 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
   const [activeTab, setActiveTab] = useState('tasks')
-  const [showDeadline, setShowDeadline] = useState(false)
-  const [deadlineValue, setDeadlineValue] = useState('')
-  const [deadlineTime, setDeadlineTime] = useState('')
-  const deadlineAreaRef = useRef(null)
+  const [toastMsg, setToastMsg] = useState('')
+  const [toastShow, setToastShow] = useState(false)
+  const toastTimer = useRef(null)
 
   // Use a fixed user ID so all devices share the same data
   const userId = 'shared_user'
@@ -183,16 +182,12 @@ function App() {
     return () => clearInterval(interval)
   }, [userId])
 
-  // Hide deadline fields when clicking outside the deadline area
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (showDeadline && deadlineAreaRef.current && !deadlineAreaRef.current.contains(e.target)) {
-        setShowDeadline(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showDeadline])
+  const showToast = useCallback((msg) => {
+    setToastMsg(msg)
+    setToastShow(true)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToastShow(false), 2000)
+  }, [])
 
   const addTask = (text, deadline, time) => {
     const today = new Date().toISOString().slice(0, 10)
@@ -296,6 +291,12 @@ function App() {
 
   const totalEver = completedToday + tasks.length
 
+  function isTaskOverdue(task) {
+    if (!task.deadline) return false
+    return new Date(task.deadline).getTime() < Date.now()
+  }
+  const overdueCount = tasks.filter(t => isTaskOverdue(t) || t.carriedOver).length
+
   // Auth gates
   if (authStatus === null) {
     return (
@@ -346,70 +347,41 @@ function App() {
   return (
     <div className="app-wrapper">
       {activeTab === 'tasks' && (
-        <>
-          <div className="app-header">
-            <DateBlock completedToday={completedToday} totalEver={totalEver} />
-            <div ref={deadlineAreaRef}>
-              <div className="task-input-wrapper">
-                <input
-                  type="text"
-                  className="task-input"
-                  placeholder="Добавить задачу..."
-                  id="task-input"
-                  onFocus={() => setShowDeadline(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const input = document.getElementById('task-input')
-                      if (input.value.trim()) {
-                        addTask(input.value.trim(), deadlineValue, deadlineTime)
-                        input.value = ''
-                        setDeadlineValue('')
-                        setDeadlineTime('')
-                        setShowDeadline(false)
-                      }
-                    }
-                  }}
-                />
-                <button
-                  className="add-button"
-                  onClick={() => {
-                    const input = document.getElementById('task-input')
-                    if (input.value.trim()) {
-                      addTask(input.value.trim(), deadlineValue, deadlineTime)
-                      input.value = ''
-                      setDeadlineValue('')
-                      setDeadlineTime('')
-                      setShowDeadline(false)
-                    }
-                  }}
-                >
-                  +
-                </button>
-              </div>
-              {showDeadline && (
-                <div className="deadline-input-wrapper">
-                  <label className="deadline-label">Дедлайн:</label>
-                  <input
-                    type="date"
-                    className="deadline-input"
-                    max="9999-12-31"
-                    value={deadlineValue}
-                    onChange={(e) => setDeadlineValue(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    className="deadline-time-input"
-                    value={deadlineTime}
-                    onChange={(e) => setDeadlineTime(e.target.value)}
-                  />
-                </div>
-              )}
+        <div className="tasks-tab-root">
+          <DateBlock
+            completedToday={completedToday}
+            totalEver={totalEver}
+            subtitle={totalEver > 0 ? `Выполнено сегодня: ${completedToday} из ${totalEver}` : 'Нет задач на сегодня'}
+            showToast={showToast}
+          />
+          <TaskList
+            tasks={tasks}
+            onAdd={addTask}
+            onComplete={completeTask}
+            onDismiss={dismissTask}
+            onUpdate={updateTask}
+            showToast={showToast}
+          />
+          <div className="tasks-stats-strip">
+            <div className="tasks-stat">
+              <span className="tasks-stat-val">{totalEver}</span>
+              <span className="tasks-stat-key">Всего</span>
+            </div>
+            <div className="tasks-stat">
+              <span className="tasks-stat-val tasks-stat-val--mint">{completedToday}</span>
+              <span className="tasks-stat-key">Выполнено</span>
+            </div>
+            <div className="tasks-stat">
+              <span className="tasks-stat-val">{tasks.length}</span>
+              <span className="tasks-stat-key">Осталось</span>
+            </div>
+            <div className="tasks-stat">
+              <span className="tasks-stat-val tasks-stat-val--coral">{overdueCount}</span>
+              <span className="tasks-stat-key">Просрочено</span>
             </div>
           </div>
-          <div className="app-tasks-scroll">
-            <TaskList tasks={tasks} onAdd={addTask} onComplete={completeTask} onDismiss={dismissTask} onUpdate={updateTask} isHeaderSeparated={true} />
-          </div>
-        </>
+          <div className={`tasks-toast${toastShow ? ' show' : ''}`}>{toastMsg}</div>
+        </div>
       )}
       {activeTab === 'goals' && (
         <GoalsBoard

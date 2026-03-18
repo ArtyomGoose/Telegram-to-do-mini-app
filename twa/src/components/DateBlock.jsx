@@ -8,7 +8,7 @@ const DAYS_RU = [
   'Четверг', 'Пятница', 'Суббота'
 ]
 
-function DateBlock({ completedToday, totalEver }) {
+function DateBlock({ completedToday, totalEver, subtitle, showToast }) {
   const today = new Date()
   const year = today.getFullYear()
   const month = today.getMonth()
@@ -28,28 +28,47 @@ function DateBlock({ completedToday, totalEver }) {
   const dayProgress = totalEver > 0 ? (completedToday / totalEver) * 100 : 0
 
   return (
-    <div className="date-block">
-      <div className="date-display">{dateString}</div>
-      <div className="progress-container">
-        <div className="progress-item">
-          <div className="progress-label">Год</div>
-          <div className="progress-bar-wrapper">
-            <div
-              className="progress-bar year-progress-bar"
-              style={{ width: `${yearProgress}%` }}
-            ></div>
-          </div>
-          <div className="progress-percentage">{yearProgress.toFixed(1)}%</div>
+    <div className="tasks-header">
+      <div className="tasks-header-top">
+        <div>
+          <div className="tasks-date-title">{dateString}</div>
+          <div className="tasks-date-sub">{subtitle || 'Сегодня'}</div>
         </div>
-        <div className="progress-item">
-          <div className="progress-label">День</div>
-          <div className="progress-bar-wrapper">
-            <div
-              className="progress-bar day-progress-bar"
-              style={{ width: `${dayProgress}%` }}
-            ></div>
+        <div className="tasks-header-actions">
+          <div
+            className="tasks-btn-icon"
+            onClick={() => showToast?.('📅 Календарь — скоро')}
+          >
+            📅
           </div>
-          <div className="progress-percentage">{dayProgress.toFixed(1)}%</div>
+          <div
+            className="tasks-btn-icon"
+            onClick={() => showToast?.('⚙️ Настройки — скоро')}
+          >
+            ⚙️
+          </div>
+        </div>
+      </div>
+      <div className="tasks-progress-section">
+        <div className="tasks-progress-row">
+          <span className="tasks-progress-label">Год</span>
+          <div className="tasks-progress-track">
+            <div
+              className="tasks-progress-fill tasks-progress-fill--year"
+              style={{ width: `${yearProgress}%` }}
+            />
+          </div>
+          <span className="tasks-progress-pct">{yearProgress.toFixed(1)}%</span>
+        </div>
+        <div className="tasks-progress-row">
+          <span className="tasks-progress-label">День</span>
+          <div className="tasks-progress-track">
+            <div
+              className="tasks-progress-fill tasks-progress-fill--day"
+              style={{ width: `${dayProgress}%` }}
+            />
+          </div>
+          <span className="tasks-progress-pct">{dayProgress.toFixed(1)}%</span>
         </div>
       </div>
     </div>
