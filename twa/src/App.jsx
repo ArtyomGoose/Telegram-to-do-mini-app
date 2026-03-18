@@ -4,6 +4,7 @@ import DateBlock from './components/DateBlock'
 import TaskList from './components/TaskList'
 import GoalsBoard from './components/GoalsBoard'
 import RoutineBoard from './components/RoutineBoard'
+import SportsBoard from './components/SportsBoard'
 import AccessDenied from './components/AccessDenied'
 import BrowserLogin from './components/BrowserLogin'
 import { database, ref, onValue, set, remove, update } from './firebase'
@@ -17,6 +18,8 @@ function App() {
   const [completedToday, setCompletedToday] = useState(0)
   const [goals, setGoals] = useState([])
   const [routines, setRoutines] = useState([])
+  const [sportCategories, setSportCategories] = useState([])
+  const [sportExercises, setSportExercises] = useState([])
   const [loading, setLoading] = useState(true)
   const [authStatus, setAuthStatus] = useState(null) // null, 'allowed', 'denied', 'browser_login'
   const [activeTab, setActiveTab] = useState('tasks')
@@ -145,11 +148,33 @@ function App() {
       console.error('Routines listener error:', error)
     })
 
+    // Subscribe to sport categories
+    const sportCatsRef = ref(database, `users/${userId}/sport_categories`)
+    const unsubscribeSportCats = onValue(sportCatsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSportCategories(Object.entries(snapshot.val()).map(([id, c]) => ({ id, ...c })))
+      } else {
+        setSportCategories([])
+      }
+    }, (error) => console.error('Sport cats error:', error))
+
+    // Subscribe to sport exercises
+    const sportExsRef = ref(database, `users/${userId}/sport_exercises`)
+    const unsubscribeSportExs = onValue(sportExsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSportExercises(Object.entries(snapshot.val()).map(([id, e]) => ({ id, ...e })))
+      } else {
+        setSportExercises([])
+      }
+    }, (error) => console.error('Sport exercises error:', error))
+
     return () => {
       unsubscribeTasks()
       unsubscribeCompleted()
       unsubscribeGoals()
       unsubscribeRoutines()
+      unsubscribeSportCats()
+      unsubscribeSportExs()
     }
   }, [authStatus])
 
@@ -260,6 +285,37 @@ function App() {
       update(ref(database, `users/${userId}/goals/${id}`), { order })
         .catch((error) => console.error('Error reordering goal:', error))
     )
+  }
+
+  const addSportCat = (cat) => {
+    set(ref(database, `users/${userId}/sport_categories/${cat.id}`), cat)
+      .catch(err => console.error('Error adding sport cat:', err))
+  }
+
+  const deleteSportCat = (id) => {
+    remove(ref(database, `users/${userId}/sport_categories/${id}`))
+      .catch(err => console.error('Error deleting sport cat:', err))
+  }
+
+  const addSportEx = (ex) => {
+    set(ref(database, `users/${userId}/sport_exercises/${ex.id}`), ex)
+      .catch(err => console.error('Error adding sport ex:', err))
+  }
+
+  const updateSportEx = (id, changes) => {
+    update(ref(database, `users/${userId}/sport_exercises/${id}`), changes)
+      .catch(err => console.error('Error updating sport ex:', err))
+  }
+
+  const deleteSportEx = (id) => {
+    remove(ref(database, `users/${userId}/sport_exercises/${id}`))
+      .catch(err => console.error('Error deleting sport ex:', err))
+  }
+
+  const addSportLog = (exId, logEntry) => {
+    const key = Date.now().toString()
+    set(ref(database, `users/${userId}/sport_exercises/${exId}/logs/${key}`), logEntry)
+      .catch(err => console.error('Error adding sport log:', err))
   }
 
   const addRoutine = (r) => {
@@ -401,6 +457,18 @@ function App() {
           onToggleDay={toggleRoutineDay}
         />
       )}
+      {activeTab === 'sport' && (
+        <SportsBoard
+          categories={sportCategories}
+          exercises={sportExercises}
+          onAddCat={addSportCat}
+          onDeleteCat={deleteSportCat}
+          onAddEx={addSportEx}
+          onUpdateEx={updateSportEx}
+          onDeleteEx={deleteSportEx}
+          onAddLog={addSportLog}
+        />
+      )}
 
       <nav className="app-tabs">
         <button
@@ -434,6 +502,19 @@ function App() {
             <polyline points="23 4 23 10 17 10" />
             <polyline points="1 20 1 14 7 14" />
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'sport' ? 'active' : ''}`}
+          onClick={() => setActiveTab('sport')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6.5 6.5h11" />
+            <path d="M6.5 17.5h11" />
+            <path d="M4 8.5v7" />
+            <path d="M20 8.5v7" />
+            <path d="M2 10v4" />
+            <path d="M22 10v4" />
           </svg>
         </button>
       </nav>
