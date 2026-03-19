@@ -297,6 +297,11 @@ function App() {
       .catch(err => console.error('Error deleting sport cat:', err))
   }
 
+  const updateSportCat = (id, changes) => {
+    update(ref(database, `users/${userId}/sport_categories/${id}`), changes)
+      .catch(err => console.error('Error updating sport cat:', err))
+  }
+
   const addSportEx = (ex) => {
     set(ref(database, `users/${userId}/sport_exercises/${ex.id}`), ex)
       .catch(err => console.error('Error adding sport ex:', err))
@@ -463,6 +468,7 @@ function App() {
           exercises={sportExercises}
           onAddCat={addSportCat}
           onDeleteCat={deleteSportCat}
+          onUpdateCat={updateSportCat}
           onAddEx={addSportEx}
           onUpdateEx={updateSportEx}
           onDeleteEx={deleteSportEx}

@@ -176,18 +176,22 @@ function Chart({ logs, color }) {
 }
 
 // ── Add Category Sheet ────────────────────────────────
-function AddCatSheet({ onSave, onClose, categoriesCount }) {
+function AddCatSheet({ onSave, onUpdate, onClose, categoriesCount, editingCat }) {
   const sheetRef = useRef(null)
-  const [name, setName] = useState('')
-  const [selectedEmoji, setSelectedEmoji] = useState(CAT_EMOJIS[categoriesCount % CAT_EMOJIS.length])
+  const [name, setName] = useState(editingCat ? editingCat.name : '')
+  const [selectedEmoji, setSelectedEmoji] = useState(editingCat ? editingCat.emoji : CAT_EMOJIS[categoriesCount % CAT_EMOJIS.length])
 
   const handleClose = useCallback(() => onClose(), [onClose])
   useSwipeDown(sheetRef, handleClose)
 
   const handleSave = () => {
     if (!name.trim()) return
-    const color = CAT_COLORS[categoriesCount % CAT_COLORS.length]
-    onSave({ id: uid(), name: name.trim(), emoji: selectedEmoji, color })
+    if (editingCat) {
+      onUpdate(editingCat.id, { name: name.trim(), emoji: selectedEmoji })
+    } else {
+      const color = CAT_COLORS[categoriesCount % CAT_COLORS.length]
+      onSave({ id: uid(), name: name.trim(), emoji: selectedEmoji, color })
+    }
     onClose()
   }
 
@@ -195,7 +199,7 @@ function AddCatSheet({ onSave, onClose, categoriesCount }) {
     <div ref={sheetRef} className="sp-sheet sp-sheet--open">
       <div className="sp-sh-handle" />
       <div className="sp-sh-head">
-        <div className="sp-sh-title">Новая категория</div>
+        <div className="sp-sh-title">{editingCat ? 'Редактировать категорию' : 'Новая категория'}</div>
         <div className="sp-sh-close" onClick={onClose}>✕</div>
       </div>
       <div className="sp-form-body">
@@ -228,7 +232,7 @@ function AddCatSheet({ onSave, onClose, categoriesCount }) {
         </div>
       </div>
       <button className="sp-sh-cta" disabled={!name.trim()} onClick={handleSave}>
-        ✓ Создать категорию
+        {editingCat ? '✓ Сохранить изменения' : '✓ Создать категорию'}
       </button>
     </div>
   )
@@ -685,10 +689,11 @@ function ExCard({ ex, index, categories, onClick }) {
 }
 
 // ── Main SportsBoard ──────────────────────────────────
-export default function SportsBoard({ categories, exercises, onAddCat, onDeleteCat, onAddEx, onUpdateEx, onDeleteEx, onAddLog }) {
+export default function SportsBoard({ categories, exercises, onAddCat, onDeleteCat, onUpdateCat, onAddEx, onUpdateEx, onDeleteEx, onAddLog }) {
   const [activeCat, setActiveCat] = useState('all')
   const [searchQ, setSearchQ] = useState('')
   const [showAddCat, setShowAddCat] = useState(false)
+  const [editingCat, setEditingCat] = useState(null)
   const [showAddEx, setShowAddEx] = useState(false)
   const [preCatId, setPreCatId] = useState(null)
   const [editEx, setEditEx] = useState(null)
@@ -839,8 +844,16 @@ export default function SportsBoard({ categories, exercises, onAddCat, onDeleteC
                     className="sp-cat-label-add"
                     onClick={() => handleOpenAddEx(catId)}
                   >
-                    + добавить
+                    + добавить упражнение
                   </span>
+                  {cat && (
+                    <span
+                      className="sp-cat-label-edit"
+                      onClick={() => { setEditingCat(cat); setShowAddCat(true) }}
+                    >
+                      редактировать
+                    </span>
+                  )}
                 </div>
                 {exs.map((ex, i) => (
                   <ExCard
@@ -870,8 +883,10 @@ export default function SportsBoard({ categories, exercises, onAddCat, onDeleteC
       {showAddCat && (
         <AddCatSheet
           onSave={(cat) => { onAddCat(cat); showToast('✓ Категория создана'); }}
-          onClose={() => setShowAddCat(false)}
+          onUpdate={(id, changes) => { onUpdateCat(id, changes); showToast('✓ Категория обновлена'); }}
+          onClose={() => { setShowAddCat(false); setEditingCat(null) }}
           categoriesCount={categories.length}
+          editingCat={editingCat}
         />
       )}
 
