@@ -3026,10 +3026,6 @@ body {
   font-size: 10px; color: var(--sp-coral); cursor: pointer; margin-left: 4px;
   -webkit-user-select: none; user-select: none;
 }
-.sp-cat-label-edit {
-  font-size: 10px; color: var(--sp-muted); cursor: pointer;
-  -webkit-user-select: none; user-select: none;
-}
 
 /* ── Exercise card ── */
 .sp-ex-card {

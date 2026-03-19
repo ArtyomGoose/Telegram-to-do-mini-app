@@ -844,11 +844,11 @@ export default function SportsBoard({ categories, exercises, onAddCat, onDeleteC
                     className="sp-cat-label-add"
                     onClick={() => handleOpenAddEx(catId)}
                   >
-                    + добавить упражнение
+                    + добавить
                   </span>
                   {cat && (
                     <span
-                      className="sp-cat-label-edit"
+                      className="sp-cat-label-add"
                       onClick={() => { setEditingCat(cat); setShowAddCat(true) }}
                     >
                       редактировать
