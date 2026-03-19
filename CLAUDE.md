@@ -5,7 +5,8 @@
 A Telegram Mini App (TWA) built with React + Vite that tracks daily tasks and goals with real-time synchronization via Firebase. Features include:
 - Task management with completion tracking and deadlines
 - Goals / Vision Board with photo mosaic layout
-- Bottom tab bar navigation (Tasks, Goals, Routine)
+- Sport tracker with categories, exercises, logs, and progress charts
+- Bottom tab bar navigation (Tasks, Goals, Routine, Sport)
 - Daily and yearly progress bars (Russian localization)
 - Access control: whitelist-based authentication by Telegram user ID
 - Real-time synchronization across devices
@@ -49,6 +50,7 @@ project3/
     │       ├── DateBlock.jsx    # Date + progress bars
     │       ├── TaskList.jsx     # Task list UI
     │       ├── GoalsBoard.jsx   # Vision Board (Goals tab)
+    │       ├── SportsBoard.jsx  # Sport tracker (Sport tab)
     │       ├── AccessDenied.jsx # Error page (access denied)
     │       └── BrowserLogin.jsx # Login form (browser only)
     └── dist/                    # Production build (after `npm run build`)
@@ -146,14 +148,76 @@ createdAt: string
 #### Footer
 - Progress bar + "Целей: N" + "Выполнено: M"
 
-### 5. Day-Change Detection
+### 5. Sport Tracker
+
+**Location:** `twa/src/components/SportsBoard.jsx`
+
+Firebase-backed sport tracking tab with categories, exercises, and workout logs.
+
+#### Categories
+
+- Each category has a name, emoji (from 12 presets), and auto-assigned color (from 6-color palette)
+- **Create:** tap "+ Добавить категорию" tile at the bottom of the list → `AddCatSheet` opens
+- **Edit:** tap "редактировать" next to the category name → same `AddCatSheet` opens pre-filled; button reads "Сохранить изменения"
+- Category label row shows: `[emoji name]  [+ добавить]  [редактировать]`
+
+#### Category Data Structure (Firebase: `users/shared_user/sport_categories/{id}`)
+```
+id: string
+name: string        // max 30 chars
+emoji: string       // one of CAT_EMOJIS
+color: string       // hex from CAT_COLORS palette
+```
+
+#### Exercises
+
+- Each exercise belongs to a category and has a type that determines how results are tracked
+- **Types:** `reps` (repetitions), `weight` (kg), `both` (weight + reps), `time` (minutes)
+- **Create:** tap "+ добавить" next to category name or "+ Упражнение" header button
+- **Edit:** tap "Изменить" inside exercise detail sheet
+- **Delete:** tap "Удалить упражнение" inside exercise detail sheet
+
+#### Exercise Data Structure (Firebase: `users/shared_user/sport_exercises/{id}`)
+```
+id: string
+catId: string       // references category id
+name: string        // max 40 chars
+type: 'reps' | 'weight' | 'both' | 'time'
+unit: string        // e.g. 'повт.', 'кг', 'мин'
+logs: {
+  {timestamp}: {
+    date: "YYYY-MM-DD"
+    val: number       // reps, weight, or time
+    val2: number|null // reps count when type='both'
+    sets: number      // 1–20
+    note: string      // max 100 chars
+  }
+}
+```
+
+#### Interactions
+- **Tap exercise card** → detail sheet with record, streak, sessions, delta, SVG line chart, log history
+- **"+ Внести результат"** → `AddResultSheet` with numeric pickers (± buttons) and PR detection
+- **Tab bar** (Все / per-category) → filters exercise list
+- **Search** → real-time filtering by exercise name
+
+#### App.jsx Functions
+- `addSportCat(cat)` — write new category to Firebase
+- `deleteSportCat(id)` — remove category from Firebase
+- `updateSportCat(id, changes)` — update category name/emoji in Firebase
+- `addSportEx(ex)` — write new exercise
+- `updateSportEx(id, changes)` — update exercise fields
+- `deleteSportEx(id)` — remove exercise
+- `addSportLog(exId, logEntry)` — append workout result
+
+### 6. Day-Change Detection
 
 Runs on app mount and every 60 seconds:
 - Compares stored date (`localStorage.twa_last_date`) with current date
 - If dates differ: marks all incomplete tasks as `carriedOver: true` (displayed in red)
 - Resets `completedToday` counter to 0
 
-### 6. Progress Bars
+### 7. Progress Bars
 
 **Location:** `twa/src/components/DateBlock.jsx`
 
@@ -161,7 +225,7 @@ Runs on app mount and every 60 seconds:
 - **Day Progress:** Tasks completed today / total tasks started today
 - Formatted as "Пятница, 27 февраля" (Russian localization)
 
-### 7. Telegram Bot Integration
+### 8. Telegram Bot Integration
 
 **Location:** `twa/api/webhook.py` (Vercel) + `bot.py` (local)
 
@@ -188,11 +252,11 @@ Two modes of bot operation:
 
 **To enable voice transcription:** add `OPENAI_API_KEY` to Vercel env vars and `.env`, then uncomment all `# [VOICE]` blocks in `twa/api/webhook.py` and `bot.py`.
 
-### 8. Firebase Realtime Sync
+### 9. Firebase Realtime Sync
 
 **Location:** `twa/src/firebase.js`
 
-- Real-time listeners on tasks, completed counter, and goals
+- Real-time listeners on tasks, completed counter, goals, sport categories, and sport exercises
 - Data structure:
   ```
   users/
@@ -202,6 +266,10 @@ Two modes of bot operation:
       completedToday: {number}
       goals/
         {id}: { id, title, emoji, description, deadline, imageBase64, completed, order, size, createdAt }
+      sport_categories/
+        {id}: { id, name, emoji, color }
+      sport_exercises/
+        {id}: { id, catId, name, type, unit, logs: { {ts}: { date, val, val2, sets, note } } }
   ```
 - Listeners only start after auth is confirmed
 
@@ -263,7 +331,7 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 ## Important Notes
 
-- **Shared Data:** All authenticated users see and modify the same tasks and goals. To switch to per-user data, change `userId` from `'shared_user'` to the authenticated user's ID.
+- **Shared Data:** All authenticated users see and modify the same tasks, goals, and sport data. To switch to per-user data, change `userId` from `'shared_user'` to the authenticated user's ID.
 - **localStorage Keys:**
   - `twa_last_date` — Last app open date (YYYY-MM-DD)
   - `twa_browser_id` — User-entered Telegram ID (browser only)
@@ -292,6 +360,10 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 - Added Goals tab: Vision Board mosaic grid with photo cells
 - Goals: tap → detail sheet, + → add form, Edit mode → drag/drop/delete/resize
 - Goals photo stored as base64 (1200px, JPEG 85%) in Firebase
+- Added Sport tab: Firebase-backed tracker with categories, exercises, logs, charts
+- Sport categories: create, edit (name + emoji), delete
+- Sport exercises: create, edit, delete, log results with numeric pickers
+- Sport detail sheet: record, streak, sessions, delta, SVG line chart, log history
 
 ## UI Behavior by Platform
 
@@ -315,4 +387,4 @@ export const ALLOWED_IDS = ['YOUR_ID_1', 'YOUR_ID_2']
 
 ---
 
-**Last Updated:** 2026-03-17 (Goals Vision Board + tab bar)
+**Last Updated:** 2026-03-19 (Sport tab + category editing)
