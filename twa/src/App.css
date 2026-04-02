@@ -353,7 +353,8 @@ body {
   flex-shrink: 0;
   border-top: 1px solid var(--tg-theme-secondary-bg-color, #2b2b2b);
   background-color: var(--tg-theme-bg-color, #212121);
-  padding: 8px 0 max(env(safe-area-inset-bottom, 0px), 8px);
+  padding: 8px 0;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .tab-btn {
