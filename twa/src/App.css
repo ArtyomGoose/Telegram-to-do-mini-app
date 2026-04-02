@@ -25,6 +25,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   padding-top: env(safe-area-inset-top);
 }
